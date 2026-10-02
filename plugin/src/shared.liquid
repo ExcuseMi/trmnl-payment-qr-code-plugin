@@ -228,7 +228,8 @@
   shrink but never grow: module size 40 makes that natural size larger than any box, and it shrinks
   to fit. trmnlp's svg scales to the box anyway. p--2 is the quiet zone scanners need.
 {%- endcomment -%}
-<div class="shrink-0 aspect--1/1 w--max-full p--2 {{ qr_dims }}" data-qr-box>
+{%- comment -%} EXPERIMENT: does TRMNL's dark mode leave elements with the framework's "image" class alone? {%- endcomment -%}
+<div class="image shrink-0 aspect--1/1 w--max-full p--2 {{ qr_dims }}" data-qr-box>
   {%- if payload != blank -%}
     {{ payload | qr_code: 40, level }}
   {%- else -%}
