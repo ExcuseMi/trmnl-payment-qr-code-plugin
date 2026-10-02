@@ -34,6 +34,10 @@ Example: [a coffee shop price list](assets/examples/coffee-shop.json) with a [ma
 
 ![coffee shop](assets/screens/coffee-shop.png)
 
+On a TRMNL X the code is capped so the list gets more room:
+
+![coffee shop on TRMNL X](assets/screens/coffee-shop-x.png)
+
 Or from a script, using the same keys as the settings:
 
 ```sh
