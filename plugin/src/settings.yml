@@ -37,7 +37,7 @@ custom_fields:
   field_type: author_bio
   category: finance,personal
   help_text: TRMNL X Ready
-  description: 'Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br /><strong>Layouts:</strong><br /> ● QR left, text right (or reversed)<br /> ● Poster: title, QR code and footer<br /> ● QR code only<br /><br />Markdown text, an icon or your own image, and four view sizes.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.'
+  description: 'Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.'
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
 - keyname: payment_type
   name: Payment Type
@@ -91,24 +91,6 @@ custom_fields:
   description: Encoded as-is. To fix the amount, put it in the link (most services support it, e.g. paypal.me/yourname/12.50).<br /><strong>Examples:</strong> https://paypal.me/yourname, https://revolut.me/yourname, bitcoin:bc1q...?amount=0.001
   placeholder: https://paypal.me/yourname
   optional: true
-- keyname: layout
-  name: Layout
-  field_type: select
-  description: Side-by-side layouts stack vertically on portrait screens and in half vertical mashups, and become the poster layout when there is no text.
-  options:
-  - QR left, text right: split
-  - Text left, QR right: split_reverse
-  - 'Poster: title, QR, footer': poster
-  - QR code only: qr_only
-  default: split
-  conditional_validation:
-  - when: poster
-    hidden:
-    - body
-  - when: qr_only
-    hidden:
-    - body
-    - footer
 - keyname: title
   name: Title
   field_type: string
@@ -164,15 +146,6 @@ custom_fields:
   field_type: url
   description: A logo or photo. Replaces the icon when set.
   placeholder: https://example.com/logo.png
-  optional: true
-- keyname: visual_position
-  name: Icon / Image Position
-  field_type: select
-  options:
-  - Next to the title: title
-  - Large, above the text: top
-  - In the middle of the QR code: qr
-  default: title
   optional: true
 name: Payment QR Code
 description:

@@ -6,15 +6,15 @@ Show a scannable payment QR code with your own text on a TRMNL.
 
 - **SEPA transfer (EPC QR)**, scanned by most European banking apps, with a fixed amount or one the payer chooses
 - **Any link or text**: PayPal.me, Revolut, Payconiq, Stripe, Bitcoin, ...
-- **Layouts**: QR left with text right (or reversed), poster (title, QR, footer), QR only. Side-by-side layouts stack on portrait screens and half vertical mashups.
-- Markdown text that shrinks to fit, an icon or your own image (next to the title, above the text, or in the middle of the QR code)
+- **No layout settings**: with text the QR sits beside it (stacked on portrait screens and tall mashup slots); without text title, QR and footer are centered
+- Markdown text that shrinks to fit, an icon or your own image next to the title
 - All four view sizes, OG, TRMNL X and `sm` devices; red accents on color panels (BWRY etc.)
-- Few settings: text size, QR size and error correction are chosen automatically, and without text the layout centers the QR
+- Few settings: text size, QR size and error correction are chosen automatically
 
 | | |
 |---|---|
-| ![split](assets/screens/split-full.png) | ![poster](assets/screens/poster-full.png) |
-| ![icon in QR](assets/screens/qr_icon-full.png) | ![color](assets/screens/split-bwry.png) |
+| ![split](assets/screens/split-full.png) | ![quadrant](assets/screens/poster-full.png) |
+| ![no text](assets/screens/no-text.png) | ![color](assets/screens/split-bwry.png) |
 
 ## Optional webhook
 
@@ -31,13 +31,16 @@ curl "https://trmnl.com/api/custom_plugins/<uuid>" -H "Content-Type: application
   -d '{"merge_variables": {"payment": {"epc_amount": "42.00", "epc_reference": "Pizza night", "updated_at": 1790000000}}}'
 ```
 
-Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `layout`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `icon`, `image_url`. An empty value falls back to the setting. TRMNL allows 12 webhook updates per hour and 2 KB of data.
 
 ## Development
 
 ```sh
-cd plugin && trmnlp serve      # preview
-python3 test/shots.py [case]   # screenshots of every layout and device into test/shots/
+cd plugin && trmnlp serve   # preview
+cd test && npm install      # once; uses the Playwright Chromium in ~/.cache/ms-playwright
+node test/run.js [filter]   # needs trmnlp and zbarimg (apt install zbar-tools)
 ```
+
+`test/run.js` builds the plugin for about 20 content cases on OG, OG portrait, TRMNL X, a small Kindle, a color panel and both font sets, in every view size. Each render must pick the expected layout, scan to exactly the expected payload (via zbar), have QR modules of at least 2 px, and keep all text inside the view, off the QR and above the title bar. Screenshots land in `test/shots/`.
 
 Icons are from [Lucide](https://lucide.dev) (ISC).

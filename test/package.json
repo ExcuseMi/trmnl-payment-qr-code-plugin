@@ -1,0 +1,6 @@
+{
+  "name": "trmnl-payment-qr-code-tests",
+  "private": true,
+  "scripts": { "test": "node run.js" },
+  "dependencies": { "playwright-core": "^1.55.0" }
+}

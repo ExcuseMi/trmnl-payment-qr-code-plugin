@@ -34,8 +34,7 @@
   {%- assign payload = wh.qr_text | default: cf.qr_text | default: "" | strip -%}
 {%- endif -%}
 
-{%- comment -%} ---------- options ---------- {%- endcomment -%}
-{%- assign layout_opt = wh.layout | default: cf.layout | default: "split" -%}
+{%- comment -%} ---------- content ---------- {%- endcomment -%}
 {%- assign title = wh.title | default: cf.title | default: "" | strip -%}
 {%- assign caption = wh.caption | default: cf.caption | default: "" | strip -%}
 {%- if caption == blank and payment_type == "epc" -%}
@@ -43,89 +42,68 @@
 {%- endif -%}
 {%- assign body = wh.body | default: cf.body | default: "" | strip -%}
 {%- assign footer = wh.footer | default: cf.footer | default: "" | strip -%}
-{%- comment -%} without text a side-by-side layout would leave a column empty, so center everything {%- endcomment -%}
-{%- if body == blank -%}
-  {%- if layout_opt == "split" or layout_opt == "split_reverse" -%}{%- assign layout_opt = "poster" -%}{%- endif -%}
-{%- endif -%}
-{%- comment -%} text starts large and the script at the bottom shrinks it to fit {%- endcomment -%}
-{%- assign text_size = "large" -%}
-{%- assign text_align = "left" -%}
 {%- assign icon = wh.icon | default: cf.icon | default: "none" -%}
 {%- assign image_url = wh.image_url | default: cf.image_url | default: "" | strip -%}
-{%- assign visual_pos = wh.visual_position | default: cf.visual_position | default: "title" -%}
 {%- assign has_visual = false -%}
 {%- if image_url != blank or icon != "none" -%}{%- assign has_visual = true -%}{%- endif -%}
 {%- comment -%} accent classes are only switched on by the script at the bottom, on color screens {%- endcomment -%}
 {%- assign accent_text = "text--red" -%}
 {%- assign accent_pill = "bg--red text--white px--3 rounded--small" -%}
-{%- comment -%} medium error correction, high when an icon covers the middle {%- endcomment -%}
 {%- assign level = "m" -%}
-{%- if has_visual and visual_pos == "qr" -%}{%- assign level = "h" -%}{%- endif -%}
 
-{%- assign mode = layout_opt -%}
-{%- if layout_opt == "split" or layout_opt == "split_reverse" -%}
+{%- comment -%}
+  ---------- layout, chosen from the content and the view ----------
+  beside:   QR with the text next to it; a full portrait screen stacks it (portrait: classes below)
+  stacked:  title, QR, text, footer in one column, for the tall half view
+  centered: title, QR, caption, footer in one column, when there is no text
+  Short views (half wide, quarter) put title and footer beside the QR when there are any.
+{%- endcomment -%}
+{%- assign has_body = false -%}
+{%- if body != blank -%}{%- assign has_body = true -%}{%- endif -%}
+{%- assign has_side = false -%}
+{%- if title != blank or footer != blank or has_visual -%}{%- assign has_side = true -%}{%- endif -%}
+{%- if has_body -%}
+  {%- assign mode = "beside" -%}
   {%- if view == 3 -%}{%- assign mode = "stacked" -%}{%- endif -%}
+{%- else -%}
+  {%- assign mode = "centered" -%}
+  {%- if has_side -%}
+    {%- if view == 2 or view == 4 -%}{%- assign mode = "beside" -%}{%- endif -%}
+  {%- endif -%}
 {%- endif -%}
-{%- comment -%} short views put the poster side by side, unless there is nothing to put beside the QR {%- endcomment -%}
-{%- assign beside = false -%}
-{%- if title != blank or footer != blank or has_visual -%}{%- assign beside = true -%}{%- endif -%}
-{%- if layout_opt == "poster" and beside -%}
-  {%- if view == 2 or view == 4 -%}{%- assign mode = "split" -%}{%- endif -%}
-{%- endif -%}
-{%- if layout_opt == "qr_only" and view == 4 -%}{%- assign mode = "split" -%}{%- endif -%}
-{%- assign reverse = false -%}
-{%- if layout_opt == "split_reverse" -%}{%- assign reverse = true -%}{%- endif -%}
+{%- assign show_body = has_body -%}
+{%- if view == 4 -%}{%- assign show_body = false -%}{%- endif -%}
+{%- assign caption_under_qr = true -%}
+{%- if view == 4 and mode == "beside" -%}{%- assign caption_under_qr = false -%}{%- endif -%}
 
-{%- assign is_split = false -%}
-{%- if mode == "split" or mode == "split_reverse" -%}{%- assign is_split = true -%}{%- endif -%}
 {%- assign title_size = "title--large" -%}
 {%- assign caption_size = "" -%}
 {%- if view == 2 or view == 3 -%}{%- assign title_size = "" -%}{%- assign caption_size = "title--small" -%}{%- endif -%}
 {%- if view == 4 -%}{%- assign title_size = "title--small" -%}{%- assign caption_size = "title--small" -%}{%- endif -%}
 
-{%- comment -%} small views drop the long-form parts {%- endcomment -%}
-{%- assign show_body = true -%}
-{%- if view == 4 or layout_opt == "poster" or layout_opt == "qr_only" or body == blank -%}{%- assign show_body = false -%}{%- endif -%}
-{%- if layout_opt == "qr_only" -%}{%- assign footer = "" -%}{%- endif -%}
-{%- assign caption_under_qr = true -%}
-{%- if view == 4 -%}{%- assign caption_under_qr = false -%}{%- endif -%}
-{%- assign visual_top = false -%}
-{%- if has_visual and visual_pos == "top" and view != 4 -%}{%- assign visual_top = true -%}{%- endif -%}
-{%- assign visual_title = false -%}
-{%- if has_visual and visual_pos == "title" -%}{%- assign visual_title = true -%}{%- endif -%}
-{%- if has_visual and visual_pos == "top" and view == 4 -%}{%- assign visual_title = true -%}{%- endif -%}
-{%- assign visual_qr = false -%}
-{%- if has_visual and visual_pos == "qr" -%}{%- assign visual_qr = true -%}{%- endif -%}
-
 {%- comment -%} ---------- QR height, as a share of the layout height ---------- {%- endcomment -%}
-{%- assign qr_max = 100 -%}
-{%- if mode == "split" or mode == "split_reverse" -%}
-  {%- if caption != blank and caption_under_qr -%}{%- assign qr_max = qr_max | minus: 14 -%}{%- endif -%}
-  {%- if view == 2 -%}{%- assign qr_max = qr_max | plus: 2 -%}{%- endif -%}
+{%- assign qr_h = 100 -%}
+{%- if mode == "beside" -%}
+  {%- if caption != blank and caption_under_qr -%}{%- assign qr_h = qr_h | minus: 14 -%}{%- endif -%}
+  {%- if view == 2 -%}{%- assign qr_h = qr_h | plus: 2 -%}{%- endif -%}
 {%- else -%}
-  {%- if title != blank or visual_title -%}{%- assign qr_max = qr_max | minus: 13 -%}{%- endif -%}
-  {%- if caption != blank -%}{%- assign qr_max = qr_max | minus: 10 -%}{%- endif -%}
-  {%- if footer != blank and mode != "qr_only" -%}{%- assign qr_max = qr_max | minus: 8 -%}{%- endif -%}
-  {%- if visual_top and mode != "qr_only" -%}{%- assign qr_max = qr_max | minus: 18 -%}{%- endif -%}
-  {%- if show_body and mode == "stacked" -%}{%- assign qr_max = qr_max | minus: 26 -%}{%- endif -%}
+  {%- if title != blank or has_visual -%}{%- assign qr_h = qr_h | minus: 13 -%}{%- endif -%}
+  {%- if caption != blank -%}{%- assign qr_h = qr_h | minus: 10 -%}{%- endif -%}
+  {%- if footer != blank -%}{%- assign qr_h = qr_h | minus: 8 -%}{%- endif -%}
+  {%- if show_body and mode == "stacked" -%}{%- assign qr_h = qr_h | minus: 26 -%}{%- endif -%}
 {%- endif -%}
-{%- comment -%} a full portrait screen stacks the split layouts: QR on top, text below {%- endcomment -%}
-{%- assign qr_max_portrait = 100 -%}
-{%- if caption != blank -%}{%- assign qr_max_portrait = qr_max_portrait | minus: 7 -%}{%- endif -%}
-{%- if title != blank or visual_title -%}{%- assign qr_max_portrait = qr_max_portrait | minus: 8 -%}{%- endif -%}
-{%- if visual_top -%}{%- assign qr_max_portrait = qr_max_portrait | minus: 12 -%}{%- endif -%}
-{%- if show_body -%}{%- assign qr_max_portrait = qr_max_portrait | minus: 30 -%}{%- endif -%}
-{%- if footer != blank -%}{%- assign qr_max_portrait = qr_max_portrait | minus: 6 -%}{%- endif -%}
-{%- assign qr_pct = 100 -%}
-{%- assign qr_h = qr_max | times: qr_pct | divided_by: 100 -%}
+{%- comment -%} the framework only has h--[0cqh] to h--[100cqh] {%- endcomment -%}
+{%- if qr_h > 100 -%}{%- assign qr_h = 100 -%}{%- endif -%}
 {%- if qr_h < 30 -%}{%- assign qr_h = 30 -%}{%- endif -%}
-{%- assign qr_hp = qr_max_portrait | times: qr_pct | divided_by: 100 -%}
-{%- if qr_hp < 30 -%}{%- assign qr_hp = 30 -%}{%- endif -%}
 {%- assign qr_dims = "h--[" | append: qr_h | append: "cqh] w--[" | append: qr_h | append: "cqh]" -%}
-{%- if view == 1 and mode == "split" or view == 1 and mode == "split_reverse" -%}
+{%- if view == 1 and mode == "beside" -%}
+  {%- assign qr_hp = 100 -%}
+  {%- if caption != blank -%}{%- assign qr_hp = qr_hp | minus: 7 -%}{%- endif -%}
+  {%- if title != blank or has_visual -%}{%- assign qr_hp = qr_hp | minus: 8 -%}{%- endif -%}
+  {%- if show_body -%}{%- assign qr_hp = qr_hp | minus: 30 -%}{%- endif -%}
+  {%- if footer != blank -%}{%- assign qr_hp = qr_hp | minus: 6 -%}{%- endif -%}
   {%- assign qr_dims = qr_dims | append: " portrait:h--[" | append: qr_hp | append: "cqh] portrait:w--[" | append: qr_hp | append: "cqh]" -%}
 {%- endif -%}
-{%- assign center_h = qr_h | times: 18 | divided_by: 100 -%}
 
 {%- comment -%} ---------- icon set (Lucide, ISC licence) ---------- {%- endcomment -%}
 {%- capture icon_paths -%}
@@ -156,14 +134,9 @@
 
 {%- comment -%} ---------- building blocks ---------- {%- endcomment -%}
 {%- capture qr_box -%}
-<div class="relative shrink-0 aspect--1/1 w--max-full {{ qr_dims }}">
+<div class="shrink-0 aspect--1/1 w--max-full {{ qr_dims }}" data-qr-box>
   {%- if payload != blank -%}
     {{ payload | qr_code: 11, level }}
-    {%- if visual_qr -%}
-    <div class="absolute inset--0 flex flex--row flex--center">
-      <div class="bg--white p--1 rounded--small h--[{{ center_h }}cqh] w--[{{ center_h }}cqh]" data-accent="{{ accent_text }}">{{ visual }}</div>
-    </div>
-    {%- endif -%}
   {%- else -%}
     <div class="flex flex--center h--full w--full outline rounded">
       <span class="label label--small text--center">Fill in the payment details in the plugin settings</span>
@@ -173,9 +146,9 @@
 {%- endcapture -%}
 
 {%- capture heading -%}
-{%- if title != blank or visual_title -%}
-<div class="flex flex--row flex--center-y gap--small{% if is_split and text_align != "center" %} flex--left{% endif %}">
-  {%- if visual_title -%}<div class="shrink-0 h--10 w--10" data-accent="{{ accent_text }}">{{ visual }}</div>{%- endif -%}
+{%- if title != blank or has_visual -%}
+<div class="flex flex--row flex--center-y gap--small{% if mode == "beside" %} flex--left{% endif %}">
+  {%- if has_visual -%}<div class="shrink-0 h--10 w--10" data-accent="{{ accent_text }}">{{ visual }}</div>{%- endif -%}
   {%- if title != blank -%}<span class="title {{ title_size }}" data-clamp="2">{{ title }}</span>{%- endif -%}
 </div>
 {%- endif -%}
@@ -183,8 +156,9 @@
 
 {%- capture body_html -%}
 {%- if show_body -%}
-<div class="richtext richtext--{{ text_align }} stretch" data-qr-body>
-  <div class="content content--{{ text_size }} content--{{ text_align }} text--{{ text_align }}">
+<div class="richtext richtext--left stretch" data-qr-body>
+  {%- comment -%} starts large; the script at the bottom shrinks it to fit {%- endcomment -%}
+  <div class="content content--large content--left text--left">
     {{ body | markdown_to_html }}
   </div>
 </div>
@@ -192,40 +166,31 @@
 {%- endcapture -%}
 
 {%- capture footer_html -%}
-{%- if footer != blank -%}<span class="label{% if is_split == false or text_align == "center" %} text--center{% endif %}" data-clamp="1">{{ footer }}</span>{%- endif -%}
+{%- if footer != blank -%}<span class="label{% if mode != "beside" %} text--center{% endif %}" data-clamp="1">{{ footer }}</span>{%- endif -%}
 {%- endcapture -%}
 
 {%- comment -%} ---------- layouts ---------- {%- endcomment -%}
-{%- if mode == "split" or mode == "split_reverse" -%}
-  {%- capture qr_col -%}
+{%- if mode == "beside" -%}
+<div class="layout layout--row layout--stretch-y gap--large portrait:layout--col portrait:layout--stretch-x" data-qr-layout="beside">
   <div class="flex flex--col flex--center-x gap--small shrink-0 w--[{{ qr_h }}cqh] portrait:w--full">
     {{ qr_box }}
     {%- if caption != blank and caption_under_qr -%}<span class="title {{ caption_size }} text--center" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
   </div>
-  {%- endcapture -%}
-  {%- capture text_col -%}
   <div class="flex flex--col flex--stretch-x flex--top gap--small stretch">
-    {%- if visual_top -%}<div class="shrink-0 h--[22cqh] w--full flex flex--row{% if text_align != "center" %} flex--left{% endif %}"><div class="h--full aspect--1/1" data-accent="{{ accent_text }}">{{ visual }}</div></div>{%- endif -%}
     {{ heading }}
     {%- if caption != blank and caption_under_qr == false -%}<span class="title {{ caption_size }}" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
     {{ body_html }}
     {%- unless show_body -%}<div class="grow"></div>{%- endunless -%}
     {{ footer_html }}
   </div>
-  {%- endcapture -%}
-<div class="layout layout--row layout--stretch-y gap--large portrait:layout--col portrait:layout--stretch-x">
-  {%- if reverse -%}{{ text_col }}{{ qr_col }}{%- else -%}{{ qr_col }}{{ text_col }}{%- endif -%}
 </div>
 {%- else -%}
-<div class="layout layout--col layout--center gap--small">
-  {%- if visual_top and mode != "qr_only" -%}<div class="shrink-0 h--[16cqh] aspect--1/1" data-accent="{{ accent_text }}">{{ visual }}</div>{%- endif -%}
+<div class="layout layout--col layout--center gap--small" data-qr-layout="{{ mode }}">
   {{ heading }}
   {{ qr_box }}
   {%- if caption != blank -%}<span class="title {{ caption_size }} text--center" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
-  {%- if mode != "qr_only" -%}
-    {%- if mode == "stacked" -%}{{ body_html }}{%- endif -%}
-    {{ footer_html }}
-  {%- endif -%}
+  {%- if mode == "stacked" -%}{{ body_html }}{%- endif -%}
+  {{ footer_html }}
 </div>
 {%- endif -%}
 

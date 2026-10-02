@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Payment QR Code editor</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='38' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='4' y='38' width='22' height='22' rx='4' fill='%23111'/%3E%3Ccircle cx='49' cy='49' r='12' fill='%23f8654b'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23fff'/%3E%3Crect x='4' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='38' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='4' y='38' width='22' height='22' rx='4' fill='%23111'/%3E%3Ccircle cx='49' cy='49' r='12' fill='%23f8654b'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/liquidjs/10.29.0/liquid.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/18.0.14/lib/marked.umd.min.js"></script>
@@ -180,19 +180,9 @@
       </section>
 
       <section class="card">
-        <div class="card-head"><span class="step">4</span><h2>Look</h2></div>
+        <div class="card-head"><span class="step">4</span><h2>Icon</h2><span class="sub">the layout adapts to the content</span></div>
         <div class="card-body">
           <div class="row">
-            <div>
-              <label for="layout">Layout</label>
-              <select id="layout">
-                <option value="">Use plugin settings</option>
-                <option value="split">QR left, text right</option>
-                <option value="split_reverse">Text left, QR right</option>
-                <option value="poster">Poster: title, QR, footer</option>
-                <option value="qr_only">QR code only</option>
-              </select>
-            </div>
             <div>
               <label for="icon">Icon</label>
               <select id="icon">
@@ -205,18 +195,7 @@
               </select>
             </div>
           </div>
-          <div class="row">
-            <div><label for="image_url">Image URL <small>replaces the icon</small></label><input id="image_url" placeholder="https://example.com/logo.png" spellcheck="false"></div>
-            <div>
-              <label for="visual_position">Icon / image position</label>
-              <select id="visual_position">
-                <option value="">Use plugin settings</option>
-                <option value="title">Next to the title</option>
-                <option value="top">Large, above the text</option>
-                <option value="qr">In the middle of the QR code</option>
-              </select>
-            </div>
-          </div>
+          <label for="image_url">Image URL <small>a logo or photo next to the title, replaces the icon</small></label><input id="image_url" placeholder="https://example.com/logo.png" spellcheck="false">
         </div>
       </section>
 
@@ -264,7 +243,7 @@ const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
 const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_reference', 'amount_mode', 'epc_amount',
-  'qr_text', 'title', 'caption', 'body', 'footer', 'layout', 'icon', 'image_url', 'visual_position'];
+  'qr_text', 'title', 'caption', 'body', 'footer', 'icon', 'image_url'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const $ = (id) => document.getElementById(id);
@@ -403,9 +382,9 @@ const VIEWS = { 1: ['full', 1, 1], 2: ['half_horizontal', 1, 0.5], 3: ['half_ver
 // stands in for the plugin settings, which the webhook cannot read
 const SAMPLE = {
   payment_type: 'epc', epc_name: 'Jane Doe', epc_iban: 'BE71096123456769', epc_amount: '12.50', epc_reference: 'Coffee fund',
-  qr_text: 'https://paypal.me/yourname', layout: 'split', title: 'Buy me a coffee', caption: '',
+  qr_text: 'https://paypal.me/yourname', title: 'Buy me a coffee', caption: '',
   body: '## Coffee fund\n\nEvery cup is **EUR 0.50**.\n\n- Open your banking app\n- Scan the code',
-  footer: 'Thank you!', icon: 'coffee', image_url: '', visual_position: 'title',
+  footer: 'Thank you!', icon: 'coffee', image_url: '',
 };
 let engine = null, template = null, device = 'og', view = 1, frame = null, renderTimer = null, renderSeq = 0;
 

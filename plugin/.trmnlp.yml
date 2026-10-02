@@ -10,14 +10,12 @@ custom_fields:
   epc_amount: '12.50'
   epc_reference: Coffee fund
   qr_text: https://paypal.me/yourname
-  layout: split
   title: Buy me a coffee
   caption: ''
   body: "## Coffee fund\n\nEvery cup is **EUR 0.50**. Pay whenever you like, weekly or monthly.\n\n- Open your banking app\n- Scan the code\n- Enjoy your coffee"
   footer: Thank you!
   icon: coffee
   image_url: ''
-  visual_position: title
 
 variables:
   trmnl:
