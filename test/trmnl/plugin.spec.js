@@ -221,10 +221,10 @@ for (const flag of [false, 'false', 'no']) {
 }
 
 // ---------------------------------------------------------------- what TRMNL's server does differently
-// trmnlp-test runs trmnlp's code; these patch a copy of the plugin to behave the way TRMNL's server or
-// web editor did. Seen: the server's qr_code differs (an extra style attribute; without "responsive"
-// a fixed 275 px code, 25 modules x 11 px) and the editor preview used CR LF. Likely, not yet seen:
-// width/height on the server's svg (the image broke until they were dropped).
+// trmnlp-test runs trmnlp's code; these patch a copy of the plugin to behave the way TRMNL did.
+// Seen on trmnl.com (2026-10-02): the server's qr_code returns, with or without "responsive",
+//   <svg width="N" height="N" style="max-width:100%;height:auto" ... viewBox="0 0 N N">
+// where trmnlp's has only the viewBox; and the web editor's preview made the template's newline CR LF.
 function patchedPlugin(name, patch) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `qr-${name}-`));
   fs.cpSync(path.join(__dirname, '../../plugin'), dir, { recursive: true });
@@ -236,12 +236,13 @@ function patchedPlugin(name, patch) {
   return dir;
 }
 const SERVER = {
-  // without "responsive" the server drew a fixed-size code, small in the corner of its box
-  'fixed-size svg': (s) => s.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'),
-  // likely: width/height on the server's svg, which break the image once it is strict XML
-  'svg with viewBox and size': (s) => s.replace("{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}",
-    "{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' | replace_first: '<svg ', '<svg width=\"300\" height=\"300\" ' -%}"),
-  // the web editor preview made the template's newline CR LF, so it never split webhook text
+  // the server's svg: its natural width/height plus a max-width style (shrinks, never grows); it drew
+  // the code small in its box, and broke the image once the template added a second width
+  "server's qr_code svg": (s) => s.replace("{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}",
+    "{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' | replace_first: '<svg ', '<svg width=\"275\" height=\"275\" style=\"max-width:100%;height:auto\" ' -%}"),
+  // not seen, kept for robustness: an svg with a size and no viewBox at all
+  'svg without viewBox': (s) => s.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'),
+  // the web editor's preview made the template's newline CR LF, so it never split webhook text
   'CRLF line endings': (s) => s.replace(/\r?\n/g, '\r\n'),
 };
 for (const [name, patch] of Object.entries(SERVER)) {
