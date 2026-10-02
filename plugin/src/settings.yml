@@ -37,7 +37,7 @@ custom_fields:
   field_type: author_bio
   category: finance,personal
   help_text: TRMNL X Ready
-  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> set Data Source to Webhook and fill the screen from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), for example to change prices, amount or reference per day.
+  description: 'Made by ExcuseMi.<br /><br />Source code, issues and examples are on <a href=''https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin''>GitHub</a>. The <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> updates the screen through the webhook.<br /><br />Learn more: <a href=''https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin#readme''>how it works</a>.'
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
 - keyname: data_source
   name: Data Source
