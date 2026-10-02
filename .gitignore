@@ -1,0 +1,4 @@
+plugin/_build/
+test/shots/
+test/.cache/
+.idea/

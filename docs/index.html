@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment QR Code editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='38' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='4' y='38' width='22' height='22' rx='4' fill='%23111'/%3E%3Ccircle cx='49' cy='49' r='12' fill='%23f8654b'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f5f3; --card: #fff; --text: #1d1d1f; --muted: #6b6b70; --line: #dedcd8;
+    --accent: #f8654b; --accent-text: #fff; --ok: #1f7a3d; --err: #b3261e; --warn: #8a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161617; --card: #222224; --text: #f2f2f3; --muted: #a1a1a6; --line: #3a3a3d;
+      --ok: #6fd08f; --err: #ff8a80; --warn: #ffcc66; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  header svg { width: 40px; height: 40px; flex: none; }
+  h1 { font-size: 22px; margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .side { order: -1; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 4px; }
+  .card > p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input, select, textarea { width: 100%; font: inherit; color: inherit; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+  textarea { min-height: 130px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .hint.bad { color: var(--err); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #status { margin-top: 12px; font-size: 14px; min-height: 1.5em; }
+  #status.ok { color: var(--ok); } #status.err { color: var(--err); } #status.warn { color: var(--warn); }
+  .preview { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .preview .qr { background: #fff; padding: 10px; border-radius: 8px; width: 100%; max-width: 260px; aspect-ratio: 1; display: grid; place-items: center; }
+  .preview .qr svg, .preview .qr img { width: 100%; height: auto; display: block; }
+  .preview .caption { font-weight: 700; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--bg); border-radius: 8px; padding: 8px; margin: 0; max-height: 160px; overflow: auto; }
+  .meter { font-size: 12px; color: var(--muted); }
+  .hidden { display: none !important; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="10" width="10" height="10" rx="2" fill="var(--bg)"/><rect x="38" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="44" y="10" width="10" height="10" rx="2" fill="var(--bg)"/><rect x="4" y="38" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="44" width="10" height="10" rx="2" fill="var(--bg)"/><circle cx="49" cy="49" r="13" fill="#f8654b"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+    <div>
+      <h1>Payment QR Code</h1>
+      <p>Change what your TRMNL shows without opening the plugin settings. Empty fields use the plugin settings.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <section class="card" id="connectCard">
+        <h2>Your plugin</h2>
+        <p>Paste the <strong>Webhook URL</strong> from the plugin settings. It stays in this browser only.</p>
+        <label for="webhook">Webhook URL or plugin UUID</label>
+        <input id="webhook" placeholder="https://trmnl.com/api/custom_plugins/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <div class="hint" id="webhookHint">Anyone with this URL can change your QR code, so keep it private.</div>
+        <div class="buttons">
+          <button id="loadBtn">Load current data</button>
+          <button id="downloadBtn">Download my editor</button>
+          <button id="forgetBtn">Forget URL</button>
+        </div>
+        <div class="hint">The downloaded editor is one HTML file with your webhook URL built in. Keep it on your phone or desktop.</div>
+      </section>
+
+      <form class="card" id="form" autocomplete="off">
+        <h2>Payment</h2>
+        <p>Overrides for this payment. Leave empty to keep the plugin settings.</p>
+        <label for="payment_type">Payment type</label>
+        <select id="payment_type">
+          <option value="">Use plugin settings</option>
+          <option value="epc">SEPA transfer (EPC QR)</option>
+          <option value="text">Payment link or text</option>
+        </select>
+
+        <div id="epcFields">
+          <div class="row">
+            <div><label for="epc_name">Beneficiary name</label><input id="epc_name" maxlength="70"></div>
+            <div><label for="epc_iban">IBAN</label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
+          </div>
+          <div class="row">
+            <div><label for="epc_bic">BIC <small>optional</small></label><input id="epc_bic" spellcheck="false"></div>
+            <div><label for="epc_reference">Reference</label><input id="epc_reference" maxlength="140"></div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="amount_mode">Amount</label>
+              <select id="amount_mode">
+                <option value="">Use plugin settings</option>
+                <option value="fixed">Fixed amount</option>
+                <option value="open">Payer chooses</option>
+              </select>
+            </div>
+            <div id="amountWrap"><label for="epc_amount">Amount (EUR)</label><input id="epc_amount" inputmode="decimal" placeholder="12.50"><div class="hint" id="amountHint"></div></div>
+          </div>
+        </div>
+
+        <div id="textFields">
+          <label for="qr_text">Payment link or text</label>
+          <input id="qr_text" placeholder="https://paypal.me/yourname/12.50" spellcheck="false">
+        </div>
+
+        <h2 style="margin-top:20px">Text</h2>
+        <div class="row">
+          <div><label for="title">Title</label><input id="title"></div>
+          <div><label for="caption">QR caption</label><input id="caption" placeholder="Defaults to the amount"></div>
+        </div>
+        <label for="body">Text <small>markdown, blank line between paragraphs</small></label>
+        <textarea id="body"></textarea>
+        <label for="footer">Footer</label><input id="footer">
+
+        <h2 style="margin-top:20px">Look</h2>
+        <div class="row">
+          <div>
+            <label for="layout">Layout</label>
+            <select id="layout">
+              <option value="">Use plugin settings</option>
+              <option value="split">QR left, text right</option>
+              <option value="split_reverse">Text left, QR right</option>
+              <option value="poster">Poster: title, QR, footer</option>
+              <option value="qr_only">QR code only</option>
+            </select>
+          </div>
+          <div>
+            <label for="icon">Icon</label>
+            <select id="icon">
+              <option value="">Use plugin settings</option>
+              <option value="none">None</option><option value="heart">Heart</option><option value="coffee">Coffee</option>
+              <option value="beer">Beer</option><option value="food">Food</option><option value="gift">Gift</option>
+              <option value="cart">Shopping cart</option><option value="home">Home</option><option value="users">Group</option>
+              <option value="wallet">Wallet</option><option value="euro">Euro</option><option value="dollar">Dollar</option>
+              <option value="phone">Phone</option><option value="star">Star</option>
+            </select>
+          </div>
+        </div>
+        <label for="image_url">Image URL</label><input id="image_url" placeholder="https://example.com/logo.png" spellcheck="false">
+
+        <div class="buttons">
+          <button type="submit" class="primary" id="sendBtn">Send to TRMNL</button>
+          <button type="button" id="clearBtn">Clear, use plugin settings</button>
+          <button type="button" id="resetBtn">Empty the form</button>
+        </div>
+        <div id="status" role="status"></div>
+        <div class="meter" id="meter"></div>
+      </form>
+    </div>
+
+    <aside class="side">
+      <section class="card preview">
+        <h2>QR preview</h2>
+        <div class="qr" id="qr"></div>
+        <div class="caption" id="previewCaption"></div>
+        <div class="hint" id="previewHint">Only overrides are previewed. Fields left empty come from the plugin settings on the device.</div>
+      </section>
+      <section class="card">
+        <h2>Sent data</h2>
+        <pre id="current">Nothing loaded yet.</pre>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script>
+// A downloaded copy gets its webhook URL written here.
+const BAKED_WEBHOOK = null;
+
+const KEY = 'payment-qr-webhook';
+const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_bic', 'epc_reference', 'amount_mode', 'epc_amount',
+  'qr_text', 'title', 'caption', 'body', 'footer', 'layout', 'icon', 'image_url'];
+const MAX_BYTES = 2000;
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const $ = (id) => document.getElementById(id);
+
+function store(fn) { try { return fn(); } catch (e) { return null; } }
+
+function uuidFrom(text) { const m = (text || '').match(UUID); return m ? m[0].toLowerCase() : null; }
+function endpoint() { const id = uuidFrom($('webhook').value); return id && 'https://trmnl.com/api/custom_plugins/' + id; }
+
+function status(text, kind) { const el = $('status'); el.textContent = text; el.className = kind || ''; }
+
+// ---- webhook URL: baked in, #id in the link, or remembered in this browser
+(function initWebhook() {
+  const fromHash = uuidFrom(location.hash);
+  const saved = BAKED_WEBHOOK || fromHash || store(() => localStorage.getItem(KEY));
+  if (saved) $('webhook').value = saved;
+  if (fromHash) history.replaceState(null, '', location.pathname + location.search);
+  if (BAKED_WEBHOOK) { $('downloadBtn').classList.add('hidden'); $('forgetBtn').classList.add('hidden'); }
+})();
+
+$('webhook').addEventListener('input', () => {
+  const id = uuidFrom($('webhook').value);
+  $('webhookHint').textContent = id || !$('webhook').value
+    ? 'Anyone with this URL can change your QR code, so keep it private.'
+    : 'That does not look like a webhook URL. It contains a UUID like 1a2b3c4d-....';
+  $('webhookHint').className = 'hint' + (id || !$('webhook').value ? '' : ' bad');
+  if (id && !BAKED_WEBHOOK) store(() => localStorage.setItem(KEY, $('webhook').value.trim()));
+});
+
+$('forgetBtn').addEventListener('click', () => {
+  store(() => localStorage.removeItem(KEY));
+  $('webhook').value = '';
+  status('Webhook URL removed from this browser.', 'ok');
+});
+
+// ---- form <-> payload
+function readForm() {
+  const p = {};
+  FIELDS.forEach((f) => {
+    const v = $(f).value.trim();
+    if (v) p[f] = f === 'epc_iban' ? v.replace(/\s+/g, '').toUpperCase() : v;
+  });
+  if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
+  if (p.amount_mode === 'open') delete p.epc_amount;
+  return p;
+}
+
+function fillForm(p) {
+  FIELDS.forEach((f) => { $(f).value = (p && p[f] != null) ? p[f] : ''; });
+  refresh();
+}
+
+function payloadFor(p) {
+  return { merge_variables: { payment: Object.assign({}, p, { updated_at: Math.floor(Date.now() / 1000) }) } };
+}
+
+// ---- validation
+function ibanValid(iban) {
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(iban)) return false;
+  const moved = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55);
+  let r = 0;
+  for (const ch of moved) r = (r * 10 + Number(ch)) % 97;
+  return r === 1;
+}
+
+function amountValue() {
+  const raw = $('epc_amount').value.trim().replace(',', '.');
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 && n <= 999999999.99 ? n : NaN;
+}
+
+// ---- preview (mirrors the template's EPC string)
+function epcString(p) {
+  if (!p.epc_iban || !p.epc_name) return null;
+  const amount = p.amount_mode !== 'open' && p.epc_amount ? Number(p.epc_amount.replace(',', '.')) : 0;
+  return ['BCD', '002', '1', 'SCT', (p.epc_bic || '').replace(/\s+/g, '').toUpperCase(), p.epc_name, p.epc_iban,
+    amount > 0 ? 'EUR' + amount.toFixed(2) : '', '', '', p.epc_reference || ''].join('\n');
+}
+
+function refresh() {
+  const p = readForm();
+  const type = p.payment_type;
+  $('epcFields').classList.toggle('hidden', type === 'text');
+  $('textFields').classList.toggle('hidden', type === 'epc');
+  $('amountWrap').classList.toggle('hidden', $('amount_mode').value === 'open');
+
+  const iban = $('epc_iban').value.replace(/\s+/g, '').toUpperCase();
+  $('ibanHint').textContent = iban && !ibanValid(iban) ? 'This IBAN does not check out. Look for a typo.' : '';
+  $('ibanHint').className = 'hint bad';
+  const amount = amountValue();
+  $('amountHint').textContent = Number.isNaN(amount) ? 'Use a number like 12.50' : '';
+  $('amountHint').className = 'hint bad';
+
+  const content = type === 'text' ? p.qr_text : (type === 'epc' || !type) ? epcString(p) : null;
+  const box = $('qr');
+  if (content && window.qrcode) {
+    const qr = qrcode(0, 'M');
+    qr.addData(unescape(encodeURIComponent(content)));
+    qr.make();
+    box.innerHTML = qr.createSvgTag({ margin: 0, scalable: true });
+  } else {
+    box.innerHTML = '<span class="hint">' + (window.qrcode ? 'Fill in the IBAN and name, or a link' : 'Preview needs an internet connection') + '</span>';
+  }
+  let caption = p.caption || '';
+  if (!caption && type !== 'text') {
+    if (p.amount_mode === 'open') caption = 'Any amount';
+    else if (amount) caption = 'EUR ' + amount.toFixed(2);
+  }
+  $('previewCaption').textContent = caption;
+
+  const bytes = new Blob([JSON.stringify(payloadFor(p))]).size;
+  $('meter').textContent = bytes + ' of ' + MAX_BYTES + ' bytes' + (bytes > MAX_BYTES ? ' (too big, shorten the text)' : '');
+  $('meter').style.color = bytes > MAX_BYTES ? 'var(--err)' : '';
+  return { p, bytes, ibanBad: !!iban && !ibanValid(iban), amountBad: Number.isNaN(amount) };
+}
+
+$('form').addEventListener('input', refresh);
+$('form').addEventListener('change', refresh);
+
+// ---- talking to TRMNL
+async function call(method, body) {
+  const url = endpoint();
+  if (!url) { status('Paste your webhook URL first.', 'err'); $('webhook').focus(); return null; }
+  const res = await fetch(url, {
+    method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
+  });
+  if (res.status === 429) throw new Error('TRMNL rate limit reached (12 updates per hour). Try again later.');
+  if (res.status === 404) throw new Error('TRMNL does not know this webhook URL. Check it in the plugin settings.');
+  if (!res.ok) throw new Error('TRMNL answered ' + res.status + ' ' + (await res.text()).slice(0, 200));
+  return res.status === 204 ? {} : res.json().catch(() => ({}));
+}
+
+function showCurrent(data) {
+  const p = data && data.merge_variables && data.merge_variables.payment;
+  if (!p || !Object.keys(p).filter((k) => k !== 'updated_at').length) {
+    $('current').textContent = 'No overrides: the device shows the plugin settings.';
+    return p || {};
+  }
+  const when = p.updated_at ? new Date(p.updated_at * 1000).toLocaleString() : 'unknown';
+  $('current').textContent = 'Sent ' + when + '\n\n' + JSON.stringify(p, null, 2);
+  return p;
+}
+
+async function load() {
+  try {
+    status('Loading...');
+    const data = await call('GET');
+    if (!data) return;
+    const p = showCurrent(data);
+    fillForm(p);
+    status('Loaded the data that is on TRMNL now.', 'ok');
+  } catch (e) { status(e.message, 'err'); }
+}
+
+$('loadBtn').addEventListener('click', load);
+
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const r = refresh();
+  if (r.ibanBad) { status('Fix the IBAN first.', 'err'); return; }
+  if (r.amountBad) { status('Fix the amount first.', 'err'); return; }
+  if (r.bytes > MAX_BYTES) { status('Too much data for a TRMNL webhook. Shorten the text.', 'err'); return; }
+  $('sendBtn').disabled = true;
+  try {
+    status('Sending...');
+    const body = payloadFor(r.p);
+    if (await call('POST', body) === null) return;
+    showCurrent(body);
+    status('Sent. The device shows it after its next refresh.', 'ok');
+  } catch (err) { status(err.message, 'err'); } finally { $('sendBtn').disabled = false; }
+});
+
+$('clearBtn').addEventListener('click', async () => {
+  if (!confirm('Remove all overrides? The device goes back to the plugin settings.')) return;
+  try {
+    status('Clearing...');
+    const body = payloadFor({});
+    if (await call('POST', body) === null) return;
+    showCurrent(body);
+    fillForm({});
+    status('Cleared. The device shows the plugin settings after its next refresh.', 'ok');
+  } catch (e) { status(e.message, 'err'); }
+});
+
+$('resetBtn').addEventListener('click', () => { fillForm({}); status(''); });
+
+// ---- download a personal copy with the webhook URL built in
+$('downloadBtn').addEventListener('click', () => {
+  const url = endpoint();
+  if (!url) { status('Paste your webhook URL first.', 'err'); return; }
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML
+    .replace('const BAKED_WEBHOOK = null;', 'const BAKED_WEBHOOK = ' + JSON.stringify(url) + ';');
+  // the live page has filled-in values; the copy starts clean and loads from TRMNL
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.getElementById('webhook').setAttribute('value', url);
+  doc.getElementById('qr').innerHTML = '';
+  doc.getElementById('status').textContent = '';
+  doc.getElementById('current').textContent = 'Nothing loaded yet.';
+  const out = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([out], { type: 'text/html' }));
+  a.download = 'payment-qr-editor.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  status('Saved payment-qr-editor.html. Open it any time to update your QR code.', 'ok');
+});
+
+refresh();
+if (endpoint()) load();
+</script>
+</body>
+</html>

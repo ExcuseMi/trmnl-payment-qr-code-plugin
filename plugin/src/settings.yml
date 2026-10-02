@@ -1,0 +1,247 @@
+---
+strategy: webhook
+no_screen_padding: 'no'
+dark_mode: 'no'
+static_data: ''
+polling_verb: get
+polling_url: ''
+polling_headers: ''
+polling_body: ''
+framework_version: 3.4.0
+name: Payment QR Code
+refresh_interval: 1440
+custom_fields:
+- keyname: about
+  name: About This Plugin
+  field_type: author_bio
+  category: finance,personal
+  help_text: TRMNL X Ready
+  description: 'Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br /><strong>Layouts:</strong><br /> ● QR left, text right (or reversed)<br /> ● Poster: title, QR code and footer<br /> ● QR code only<br /><br />Markdown text, an icon or your own image, and four view sizes.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.'
+  github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
+- keyname: payment_type
+  name: Payment Type
+  field_type: select
+  description: What the QR code contains.
+  options:
+  - SEPA transfer (EPC QR): epc
+  - Payment link or text: text
+  default: epc
+  conditional_validation:
+  - when: epc
+    hidden:
+    - qr_text
+  - when: text
+    hidden:
+    - epc_name
+    - epc_iban
+    - epc_bic
+    - amount_mode
+    - epc_amount
+    - epc_reference
+    - show_details
+- keyname: epc_name
+  name: Beneficiary Name
+  field_type: string
+  description: Name of the account holder (max 70 characters).
+  placeholder: Jane Doe
+  optional: true
+- keyname: epc_iban
+  name: IBAN
+  field_type: string
+  placeholder: BE71 0961 2345 6769
+  optional: true
+- keyname: epc_bic
+  name: BIC
+  field_type: string
+  description: Optional inside the EEA.
+  placeholder: GKCCBEBB
+  optional: true
+- keyname: amount_mode
+  name: Amount
+  field_type: select
+  description: A fixed amount is filled in for the payer. An open amount lets them type it in their banking app.
+  options:
+  - Fixed amount: fixed
+  - Payer chooses: open
+  default: fixed
+  conditional_validation:
+  - when: open
+    hidden:
+    - epc_amount
+- keyname: epc_amount
+  name: Amount (EUR)
+  field_type: string
+  placeholder: '12.50'
+  optional: true
+- keyname: epc_reference
+  name: Payment Reference
+  field_type: string
+  description: Message shown on the transfer (max 140 characters).
+  placeholder: Coffee fund
+  optional: true
+- keyname: qr_text
+  name: Payment Link or Text
+  field_type: string
+  description: Encoded as-is. To fix the amount, put it in the link (most services support it, e.g. paypal.me/yourname/12.50).<br /><strong>Examples:</strong> https://paypal.me/yourname, https://revolut.me/yourname, bitcoin:bc1q...?amount=0.001
+  placeholder: https://paypal.me/yourname
+  optional: true
+- keyname: layout
+  name: Layout
+  field_type: select
+  description: Side-by-side layouts stack vertically on portrait screens and in half vertical mashups.
+  options:
+  - QR left, text right: split
+  - Text left, QR right: split_reverse
+  - 'Poster: title, QR, footer': poster
+  - QR code only: qr_only
+  default: split
+  conditional_validation:
+  - when: poster
+    hidden:
+    - body
+    - text_size
+    - text_align
+  - when: qr_only
+    hidden:
+    - body
+    - text_size
+    - text_align
+    - footer
+    - show_details
+- keyname: title
+  name: Title
+  field_type: string
+  placeholder: Buy me a coffee
+  optional: true
+- keyname: caption
+  name: QR Caption
+  field_type: string
+  description: Short line under the QR code. For SEPA it defaults to the amount, or Any amount when the payer chooses.
+  placeholder: Scan to pay
+  optional: true
+- keyname: show_details
+  name: Show Account Details
+  field_type: boolean
+  description: Print name, IBAN and reference under the QR code, for people who type instead of scan.
+  default: false
+  optional: true
+- keyname: body
+  name: Text
+  field_type: text
+  description: Shown next to (or under) the QR code.
+  help_text: Supports <a href='https://onlinemarkdown.com/cheat-sheet'>markdown</a>. Leave a blank line between paragraphs.
+  placeholder: |-
+    ## Coffee fund
+
+    Every cup is **EUR 0.50**.
+
+    - Open your banking app
+    - Scan the code
+    - Enjoy your coffee
+  optional: true
+- keyname: footer
+  name: Footer
+  field_type: string
+  placeholder: Thank you!
+  optional: true
+- keyname: icon
+  name: Icon
+  field_type: select
+  options:
+  - None: none
+  - Heart: heart
+  - Coffee: coffee
+  - Beer: beer
+  - Food: food
+  - Gift: gift
+  - Shopping cart: cart
+  - Home: home
+  - Group: users
+  - Wallet: wallet
+  - Euro: euro
+  - Dollar: dollar
+  - Phone: phone
+  - Star: star
+  default: none
+  optional: true
+- keyname: image_url
+  name: Image URL
+  field_type: url
+  description: A logo or photo. Replaces the icon when set.
+  placeholder: https://example.com/logo.png
+  optional: true
+- keyname: visual_position
+  name: Icon / Image Position
+  field_type: select
+  options:
+  - Next to the title: title
+  - Large, above the text: top
+  - In the middle of the QR code: qr
+  default: title
+  optional: true
+- keyname: qr_size
+  name: QR Size
+  field_type: select
+  options:
+  - Large: large
+  - Medium: medium
+  - Small: small
+  default: large
+  optional: true
+- keyname: text_size
+  name: Text Size
+  field_type: select
+  description: The largest size to use. Text shrinks automatically when it does not fit.
+  options:
+  - Auto: auto
+  - Small: small
+  - Normal: base
+  - Large: large
+  - Extra large: xlarge
+  default: auto
+  optional: true
+- keyname: text_align
+  name: Text Alignment
+  field_type: select
+  options:
+  - Left: left
+  - Center: center
+  default: left
+  optional: true
+- keyname: accent
+  name: Accent Color
+  field_type: select
+  description: Only used on color screens (for example black/white/red/yellow panels). Colors the amount and the icon; the QR code stays black.
+  options:
+  - Red: red
+  - Yellow: yellow
+  - Orange: orange
+  - Green: green
+  - Blue: blue
+  - None: none
+  default: red
+  optional: true
+- keyname: qr_level
+  name: QR Error Correction
+  field_type: select
+  description: Higher survives smudges but makes a denser code. Forced to High when the icon sits in the QR code.
+  options:
+  - Low: l
+  - Medium: m
+  - Quartile: q
+  - High: h
+  default: m
+  optional: true
+- keyname: override_hours
+  name: Webhook Data Expires After (hours)
+  field_type: number
+  description: Ignore data sent through the webhook after this many hours and show these settings again. 0 keeps it until you clear it.
+  default: 0
+  min: 0
+  max: 8760
+  optional: true
+- keyname: show_title_bar
+  name: Show Title Bar
+  field_type: boolean
+  default: true
+  optional: true
