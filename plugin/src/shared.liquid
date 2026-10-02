@@ -223,53 +223,14 @@
 
 {%- comment -%} ---------- building blocks ---------- {%- endcomment -%}
 {%- capture qr_box -%}
-<div class="shrink-0 aspect--1/1 w--max-full {{ qr_dims }}" data-qr-box>
+{%- comment -%}
+  Plain qr_code. TRMNL's server draws its svg at its natural size with max-width:100%, so it can
+  shrink but never grow: module size 40 makes that natural size larger than any box, and it shrinks
+  to fit. trmnlp's svg scales to the box anyway. p--2 is the quiet zone scanners need.
+{%- endcomment -%}
+<div class="shrink-0 aspect--1/1 w--max-full p--2 {{ qr_dims }}" data-qr-box>
   {%- if payload != blank -%}
-    {%- comment -%}
-      The code is drawn as an <img>: TRMNL's dark mode inverts the whole screen except images, and
-      an inverted (white on black) code is unreadable for many banking apps. The quiet zone, the white
-      margin scanners need, is drawn inside the image for the same reason.
-      TRMNL's server has its own qr_code: with or without "responsive" its svg is
-      <svg width="407" height="407" style="max-width:100%;height:auto" ... viewBox="0 0 407 407">,
-      so it shrinks but never grows past its natural size (25 modules x 11 = 275 px stayed 275 px).
-      trmnlp's has only the viewBox and fills its box. Both are normalized below.
-    {%- endcomment -%}
-    {%- capture qr_svg -%}{{ payload | qr_code: 11, level, "responsive" }}{%- endcapture -%}
-    {%- comment -%}
-      Rebuild the svg's opening tag: drop the width/height the server sets and keep or add the viewBox.
-      Inside an <img> the svg is strict XML, where a duplicate attribute breaks the whole image: it did,
-      until these were dropped.
-    {%- endcomment -%}
-    {%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}
-    {%- assign qr_open = qr_svg | split: '>' | first -%}
-    {%- assign qr_rest = qr_svg | remove_first: qr_open -%}
-    {%- assign qr_tokens = qr_open | split: ' ' -%}
-    {%- assign qr_open = "" -%}
-    {%- assign qr_px = "" -%}
-    {%- assign has_viewbox = false -%}
-    {%- for t in qr_tokens -%}
-      {%- assign t6 = t | slice: 0, 6 -%}
-      {%- assign t7 = t | slice: 0, 7 -%}
-      {%- assign t8 = t | slice: 0, 8 -%}
-      {%- if t6 == 'width=' -%}
-        {%- assign qr_px = t | remove: 'width=' | remove: '"' | remove: "'" -%}
-      {%- elsif t7 == 'height=' -%}
-      {%- else -%}
-        {%- if t8 == 'viewBox=' -%}{%- assign has_viewbox = true -%}{%- endif -%}
-        {%- assign qr_open = qr_open | append: t | append: ' ' -%}
-      {%- endif -%}
-    {%- endfor -%}
-    {%- if has_viewbox -%}
-      {%- assign qr_px = qr_svg | split: 'viewBox="0 0 ' | last | split: ' ' | first -%}
-    {%- else -%}
-      {%- assign qr_open = qr_open | append: 'viewBox="0 0 ' | append: qr_px | append: ' ' | append: qr_px | append: '"' -%}
-    {%- endif -%}
-    {%- assign qr_svg = qr_open | strip | append: qr_rest -%}
-    {%- capture qr_img -%}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="crispEdges"><rect width="100" height="100" fill="#fff"/>{{ qr_svg | replace_first: '<svg ', '<svg x="8" y="8" width="84" height="84" ' }}</svg>{%- endcapture -%}
-    <img class="w--full h--full" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}"
-      onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
-    {%- comment -%} if the image cannot load, the same code inline: better inverted in dark mode than missing {%- endcomment -%}
-    <div class="hidden w--full h--full bg--white p--2" data-qr-fallback>{{ qr_svg | replace_first: '<svg ', '<svg width="100%" height="100%" ' }}</div>
+    {{ payload | qr_code: 40, level }}
   {%- else -%}
     <div class="flex flex--row flex--center h--full w--full outline rounded p--4">
       <span class="label text--center">{{ missing }}</span>
