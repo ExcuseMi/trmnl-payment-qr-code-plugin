@@ -38,14 +38,21 @@ curl "https://trmnl.com/api/custom_plugins/<uuid>" -H "Content-Type: application
   -d '{"merge_variables": {"payment": {"epc_amount": "42.00", "epc_reference": "Pizza night", "updated_at": 1790000000}}}'
 ```
 
-Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+Webhook-only keys for the title bar as well: `show_title_bar` (`false` hides it), `title_bar` (its text) and `title_bar_icon` (an image URL).
+
+Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `title_bar_icon`, `show_title_bar`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+
+## How it is built
+
+`plugin/src/transform.js` runs as a serverless transform on TRMNL before every render: it picks the data source, builds the EPC payload, captions, price rows and title bar, and hands the template one `qr` object. `shared.liquid` only chooses the layout for the view and draws it.
 
 ## Development
 
 ```sh
 cd plugin && trmnlp serve   # preview
 cd test && npm install      # once; uses the Playwright Chromium in ~/.cache/ms-playwright
-node test/run.js [filter]   # needs trmnlp and zbarimg (apt install zbar-tools)
+node test/transform.test.js # the transform's logic, in milliseconds
+node test/run.js [filter]   # renders; needs trmnlp and zbarimg (apt install zbar-tools)
 ```
 
 `test/run.js` builds the plugin for about 20 content cases on OG, OG portrait, TRMNL X, a small Kindle, a color panel and both font sets, in every view size. Each render must pick the expected layout, scan to exactly the expected payload (via zbar), have QR modules of at least 2 px, and keep all text inside the view, off the QR and above the title bar. Screenshots land in `test/shots/`.

@@ -76,6 +76,12 @@ const CASES = [
   { name: 'dense link', fields: { payment_type: 'text', qr_text: 'https://example.com/pay?' + 'invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120) }, payload: 'https://example.com/pay?invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120), matrix: [['og', ALL_VIEWS]] },
   // the coffee shop example from assets/examples: price rows, a logo image, payer picks the amount
   { name: 'price list', fields: {}, webhook: Object.assign({}, require('../assets/examples/coffee-shop.json').merge_variables.payment, { image_url: IMG }), payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), caption: 'Scan, pay, enjoy', expectFields: { title: 'Northbean Coffee' }, priceRows: true, matrix: [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1]], ['sm', [1]], ['bwry', [1]]] },
+  // a real instance: tiny payload (a short, low-version code) and nothing but the QR and its caption
+  { name: 'short payload alone', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), caption: 'Any amount', matrix: [['og', ALL_VIEWS], ['x', [1]], ['og_portrait', [1]]] },
+  // TRMNL's server returned the code at a fixed pixel size (no viewBox), which drew it small in the
+  // top-left corner of its box; trmnlp's filter is scalable, so force the server's variant here
+  { name: 'fixed-size svg from the server', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', ALL_VIEWS], ['x', [1]]] },
+  { name: 'fixed-size svg with text', fields: {}, payload: EPC_BASE, patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', [1, 2]], ['x', [1]]] },
   // payload rules
   { name: 'amount open', fields: { epc_amount: '' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
   { name: 'amount zero is open', fields: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
@@ -98,18 +104,28 @@ const CASES = [
   { name: 'title bar from webhook', fields: { title_bar: 'From settings' }, webhook: Object.assign({}, BASE, { title_bar: 'From webhook' }), payload: EPC_BASE, titleBar: 'From webhook', matrix: [['og', [1]]] },
   { name: 'title bar defaults to plugin name', fields: {}, payload: EPC_BASE, titleBar: 'Payment QR Code', matrix: [['og', [1]]] },
   { name: 'settings ignore webhook data', fields: { data_source: 'settings' }, webhook: { title: 'From webhook', epc_amount: '42' }, payload: EPC_BASE, expectFields: { title: 'Buy me a coffee' }, matrix: [['og', [1]]] },
+  // without a title bar the content gets the whole screen and must still fit it
+  { name: 'webhook hides the title bar', fields: {}, webhook: Object.assign({}, BASE, { show_title_bar: false }), payload: EPC_BASE, noTitleBar: true, matrix: [['og', ALL_VIEWS], ['x', [1]]] },
+  { name: 'title bar icon', fields: { title_bar_icon: IMG, title_bar: 'Northbean' }, payload: EPC_BASE, titleBar: 'Northbean', titleBarIcon: true, matrix: [['og', [1, 4]]] },
   { name: 'webhook link', fields: {}, webhook: Object.assign({}, BASE, { payment_type: 'text', qr_text: 'https://revolut.me/jane' }), payload: 'https://revolut.me/jane', matrix: [['og', [1]]] },
 ];
 
 // ---------------------------------------------------------------- build (one trmnlp build per content)
 const builds = new Map();
-function build(fields, webhook) {
+function build(fields, webhook, patch) {
   // webhook data only counts when the data source says so
   if (webhook && !fields.data_source) fields = Object.assign({}, fields, { data_source: 'webhook' });
-  const key = JSON.stringify([fields, webhook || null]);
+  const key = JSON.stringify([fields, webhook || null, patch ? patch.toString() : null]);
   if (builds.has(key)) return builds.get(key);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qrplugin-'));
   fs.cpSync(path.join(PLUGIN, 'src'), path.join(dir, 'src'), { recursive: true });
+  if (patch) {
+    const shared = path.join(dir, 'src', 'shared.liquid');
+    const before = fs.readFileSync(shared, 'utf8');
+    const after = patch(before);
+    if (after === before) throw new Error('the source patch changed nothing: the template moved, update the test');
+    fs.writeFileSync(shared, after);
+  }
   const variables = { trmnl: { plugin_settings: { instance_name: 'Payment QR Code' } } };
   if (webhook) variables.payment = webhook;
   // JSON is valid YAML, and a build in a copy never touches the tracked .trmnlp.yml
@@ -158,7 +174,7 @@ function measure() {
   const svg = document.querySelector('svg.qr-code');
   const out = { layout: layout && layout.dataset.qrLayout, view: r(view), titleBar: null, qr: null, texts: [], bodyOverflow: false };
   const tb = view.querySelector('.title_bar');
-  if (tb) { out.titleBar = r(tb); out.titleBarText = tb.textContent.trim(); }
+  if (tb) { out.titleBar = r(tb); out.titleBarText = tb.textContent.trim(); out.titleBarImg = !!tb.querySelector('img'); }
   if (svg) {
     // the code is drawn square inside the svg box (preserveAspectRatio meet)
     const box = r(svg);
@@ -166,6 +182,16 @@ function measure() {
     const vb = svg.viewBox.baseVal;
     out.qr = { x: box.x + (box.w - side) / 2, y: box.y + (box.h - side) / 2, w: side, h: side, modules: vb.width / 11 };
     out.qr.r = out.qr.x + side; out.qr.b = out.qr.y + side;
+  }
+  const qbox = document.querySelector('[data-qr-box]');
+  if (svg && qbox) {
+    // measured against the box's content area: its padding is the quiet zone
+    const b = qbox.getBoundingClientRect(), s = svg.getBoundingClientRect(), cs = getComputedStyle(qbox);
+    const zoom = b.width / qbox.offsetWidth || 1;
+    const padX = (parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) * zoom;
+    const padY = (parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)) * zoom;
+    out.fill = Math.min(s.width / (b.width - padX), s.height / (b.height - padY));
+    out.quiet = Math.min(s.left - b.left, b.right - s.right, s.top - b.top, b.bottom - s.bottom);
   }
   layout.querySelectorAll('.title, .label, [data-qr-body], [data-qr-box] .label').forEach((el) => {
     if (el.closest('.title_bar')) return;
@@ -180,7 +206,8 @@ function measure() {
     const box = row.closest('.content').getBoundingClientRect();
     const name = row.firstElementChild.getBoundingClientRect();
     const price = row.lastElementChild.getBoundingClientRect();
-    return { text: row.textContent.trim(), gapRight: box.right - price.right, apart: price.left - name.right };
+    const column = row.closest('[data-qr-body]').parentElement.getBoundingClientRect();
+    return { text: row.textContent.trim(), gapRight: box.right - price.right, apart: price.left - name.right, span: box.width / column.width };
   });
   out.items = Array.from(layout.querySelectorAll('[data-qr-body] li')).filter((li) => li.getBoundingClientRect().height > 0)
     .map((li) => ({ marked: !!li.querySelector('[data-qr-mark]') }));
@@ -198,7 +225,8 @@ function decode(png) {
   const file = path.join(os.tmpdir(), 'qr-test-' + process.pid + '.png');
   fs.writeFileSync(file, png);
   const res = spawnSync('zbarimg', ['-q', '--raw', '-Sbinary', file], { encoding: 'utf8' });
-  return res.status === 0 ? res.stdout.replace(/\n$/, '') : null;
+  // -Sbinary prints the payload as is, without a trailing newline to strip
+  return res.status === 0 ? res.stdout : null;
 }
 
 // ---------------------------------------------------------------- run
@@ -218,7 +246,7 @@ function decode(png) {
         const errors = [];
         const d = DEVICES[dev];
         const [, fw, fh] = VIEWS[view];
-        let html = localize(build(Object.assign({}, BASE, c.fields), c.webhook)[view]);
+        let html = localize(build(Object.assign({}, BASE, c.fields), c.webhook, c.patch)[view]);
         html = html.replace(/class="screen([^"]*)"/, (m, rest) => `class="screen${rest} ${d.classes}"`);
         if (view !== 1) html = html.replace('</head>', `<style>.screen{--full-w:calc(var(--screen-w) * ${fw}) !important;--full-h:calc(var(--screen-h) * ${fh}) !important}</style></head>`);
         const file = path.join(os.tmpdir(), `qr-test-${process.pid}.html`);
@@ -263,6 +291,13 @@ function decode(png) {
           if (m.titleBar && t.b > m.titleBar.y + 1) errors.push(`"${t.text}" runs under the title bar`);
         }
         if (m.bodyOverflow) errors.push('text overflows its box');
+        // the code must fill its box whatever size the filter drew it at
+        // a quiet zone: white space between the code and anything else, scanners need it
+        if (m.qr && m.quiet !== undefined && m.quiet < 6) errors.push(`QR quiet zone is only ${m.quiet.toFixed(0)}px`);
+        if (m.qr && m.fill !== undefined && m.fill < 0.98) errors.push(`QR fills only ${(m.fill * 100).toFixed(0)}% of its box`);
+        if (c.noTitleBar && m.titleBar) errors.push('title bar shown, expected none');
+        if (!c.noTitleBar && !m.titleBar) errors.push('no title bar');
+        if (c.titleBarIcon && !m.titleBarImg) errors.push('title bar icon not shown');
         if (c.titleBar && m.titleBarText !== c.titleBar) errors.push(`title bar says "${m.titleBarText}", expected "${c.titleBar}"`);
         // lists get a mark (bullet or number) in front of every visible item
         if (m.items.some((i) => !i.marked)) errors.push('a list item has no mark');
@@ -271,6 +306,8 @@ function decode(png) {
           for (const row of m.rows) {
             if (row.gapRight > 2) errors.push(`price in "${row.text}" is not right-aligned (${row.gapRight.toFixed(0)}px short)`);
             if (row.apart < 0) errors.push(`price in "${row.text}" overlaps the item`);
+            // the list spans its column; a centered column once shrank it to a narrow strip
+            if (row.span < 0.9) errors.push(`price list uses only ${(row.span * 100).toFixed(0)}% of its column`);
           }
         }
         if (c.caption && m.layout && !m.caption.includes(c.caption)) errors.push(`caption is ${JSON.stringify(m.caption)}, expected "${c.caption}"`);

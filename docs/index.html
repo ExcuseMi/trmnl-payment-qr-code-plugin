@@ -178,6 +178,11 @@
           <div><label for="footer">Footer</label><input id="footer"></div>
           <div><label for="title_bar">Title bar</label><input id="title_bar" placeholder="Defaults to the plugin name"></div>
         </div>
+        <div class="row">
+          <div><label for="title_bar_icon">Title bar icon URL</label><input id="title_bar_icon" placeholder="https://example.com/icon.png" spellcheck="false"></div>
+          <div><label for="show_title_bar">Title bar</label>
+            <select id="show_title_bar"><option value="">Show</option><option value="false">Hide</option></select></div>
+        </div>
         </div>
       </section>
 
@@ -251,7 +256,7 @@ const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
 const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_reference', 'amount_mode', 'epc_amount',
-  'qr_text', 'title', 'caption', 'body', 'footer', 'title_bar', 'icon', 'image_url'];
+  'qr_text', 'title', 'caption', 'body', 'footer', 'title_bar', 'title_bar_icon', 'show_title_bar', 'icon', 'image_url'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const $ = (id) => document.getElementById(id);
@@ -305,6 +310,7 @@ function readForm() {
   if (p.payment_type === 'text') { ['epc_name', 'epc_iban', 'epc_amount', 'epc_reference', 'amount_mode'].forEach((k) => delete p[k]); }
   else delete p.qr_text;
   if (p.icon === 'none') delete p.icon;
+  if (p.show_title_bar === 'false') p.show_title_bar = false;
   if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
   // the template treats an amount of 0 as "payer chooses"
   if (p.amount_mode === 'open') p.epc_amount = '0';
@@ -385,6 +391,9 @@ segment(document.querySelector('.md-head .seg'), (b) => {
 
 // ---- device preview: the plugin's real template, rendered with liquidjs against TRMNL's stylesheet
 const TEMPLATE_URL = 'https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/plugin/src/shared.liquid';
+// the plugin's serverless transform turns the webhook data into the template's `qr` object
+const TRANSFORM_URL = 'https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/plugin/src/transform.js';
+let transform = null;
 const FRAMEWORK_CSS = 'https://trmnl.com/css/3.4.0/plugins.min.css';
 const DEVICES = {
   og: { w: 800, h: 480, classes: 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-trmnl' },
@@ -401,7 +410,10 @@ function utf8(s) { return unescape(encodeURIComponent(s)); }
 async function initRenderer() {
   if (!window.liquidjs || !window.qrcode) { $('renderState').textContent = 'preview needs an internet connection'; return; }
   try {
-    const src = await (await fetch(TEMPLATE_URL, { cache: 'no-cache' })).text();
+    const [src, tsrc] = await Promise.all([TEMPLATE_URL, TRANSFORM_URL].map((u) => fetch(u, { cache: 'no-cache' }).then((r) => r.text())));
+    const mod = { exports: {} };
+    new Function('module', tsrc)(mod);
+    transform = mod.exports;
     template = src.replace(/\{%-?\s*template\s+main\s*-?%\}/, '').replace(/\{%-?\s*endtemplate\s*-?%\}/, '');
     engine = new liquidjs.Liquid();
     engine.registerFilter('qr_code', (data, size, level) => {
@@ -456,15 +468,14 @@ window.addEventListener('resize', fitFrame);
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderNow, 250); }
 
 async function renderNow() {
-  if (!engine || !frame || !frame.contentDocument) return;
+  if (!engine || !transform || !frame || !frame.contentDocument) return;
   const target = frame.contentDocument.getElementById('v');
   if (!target) return;
   const seq = ++renderSeq;
   const p = readForm();
-  const ctx = {
-    trmnl: { plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } },
-    payment: p, view: view,
-  };
+  const trmnl = { plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } };
+  const { qr } = await transform.run({ trmnl, payment: p });
+  const ctx = { trmnl, qr, view: view };
   try {
     const html = await engine.parseAndRender(template, ctx);
     if (seq !== renderSeq) return;

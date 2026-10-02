@@ -5,8 +5,8 @@ dark_mode: 'no'
 static_data: ''
 polling_verb: get
 framework_version: 3.4.0
-serverless_language:
-refresh_interval_floor:
+serverless_language: node
+refresh_interval_floor: '5'
 polling_url: ''
 polling_headers: ''
 polling_body: ''
@@ -64,6 +64,8 @@ custom_fields:
     - body
     - footer
     - title_bar
+    - show_title_bar
+    - title_bar_icon
     - icon
     - image_url
 - keyname: webhook_url
@@ -157,6 +159,17 @@ custom_fields:
   description: The text in the bar at the bottom. Leave empty to use the plugin name.
   placeholder: Payment QR Code
   optional: true
+- keyname: show_title_bar
+  name: Show Title Bar
+  field_type: boolean
+  default: true
+  optional: true
+- keyname: title_bar_icon
+  name: Title Bar Icon URL
+  field_type: url
+  description: A small square image for the title bar. Leave empty for the plugin icon.
+  placeholder: https://example.com/icon.png
+  optional: true
 - keyname: icon
   name: Icon
   field_type: select
@@ -186,4 +199,5 @@ custom_fields:
   optional: true
 name: Payment QR Code
 description: Payment QR code with your own text
-refresh_interval: 1440
+recipe_overview: Public recipe overview field
+refresh_interval: 15

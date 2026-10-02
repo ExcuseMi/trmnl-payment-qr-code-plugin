@@ -1,79 +1,17 @@
 {% template main %}
-{%- assign cf = trmnl.plugin_settings.custom_fields_values -%}
 {%- comment -%}
-  wh = values pushed through the webhook ({"merge_variables": {"payment": {...}}}, same keys as the
-  settings). Each one overrides its setting; a missing or empty key falls back to the setting.
+  `qr` comes from src/transform.js (serverless, runs on TRMNL before every render): it picks the data
+  source, builds the QR payload, captions, price rows and title bar. This template only lays it out.
 {%- endcomment -%}
-{%- comment -%}
-  One source at a time: "Plugin settings" reads the fields (webhook data is ignored), "Webhook" reads
-  only what was sent (the fields are hidden in the form, so stale values must not leak through).
-{%- endcomment -%}
-{%- assign webhook_mode = false -%}
-{%- if cf.data_source == "webhook" -%}{%- assign webhook_mode = true -%}{%- endif -%}
-{%- if webhook_mode -%}{%- assign wh = payment -%}{%- assign base = nil -%}{%- else -%}{%- assign wh = nil -%}{%- assign base = cf -%}{%- endif -%}
-{%- capture nl %}
-{% endcapture -%}
-
-{%- comment -%} ---------- payload: an empty or zero amount lets the payer choose ---------- {%- endcomment -%}
-{%- assign payment_type = wh.payment_type | default: base.payment_type | default: "epc" -%}
-{%- assign iban = wh.epc_iban | default: base.epc_iban | default: "" | remove: " " | upcase -%}
-{%- assign beneficiary = wh.epc_name | default: base.epc_name | default: "" | strip | truncate: 70, "" -%}
-{%- assign reference = wh.epc_reference | default: base.epc_reference | default: "" | strip | truncate: 140, "" -%}
-{%- assign amount_raw = wh.epc_amount | default: base.epc_amount | default: "" | strip | replace: ",", "." -%}
-{%- assign amount = "" -%}
-{%- assign amount_display = "" -%}
-{%- if amount_raw != blank -%}
-  {%- assign amount_num = amount_raw | times: 1.0 | round: 2 -%}
-  {%- if amount_num > 0 -%}
-    {%- assign amount = amount_num | number_to_currency: "", "", ".", 2 -%}
-    {%- assign amount_display = amount_num | number_to_currency: "EUR " -%}
-  {%- endif -%}
-{%- endif -%}
-
-{%- assign payload = "" -%}
-{%- if payment_type == "epc" -%}
-  {%- if iban != blank and beneficiary != blank -%}
-    {%- capture amount_field %}{% if amount != blank %}EUR{{ amount }}{% endif %}{% endcapture -%}
-    {%- capture payload -%}BCD{{ nl }}002{{ nl }}1{{ nl }}SCT{{ nl }}{{ nl }}{{ beneficiary }}{{ nl }}{{ iban }}{{ nl }}{{ amount_field }}{{ nl }}{{ nl }}{{ nl }}{{ reference }}{%- endcapture -%}
-  {%- endif -%}
-{%- else -%}
-  {%- assign payload = wh.qr_text | default: base.qr_text | default: "" | strip -%}
-{%- endif -%}
-
-{%- comment -%} ---------- content ---------- {%- endcomment -%}
-{%- assign title = wh.title | default: base.title | default: "" | strip -%}
-{%- assign caption = wh.caption | default: base.caption | default: "" | strip -%}
-{%- if caption == blank and payment_type == "epc" and payload != blank -%}
-  {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = "Any amount" -%}{%- endif -%}
-{%- endif -%}
-{%- assign body = wh.body | default: base.body | default: "" | strip -%}
-{%- comment -%}
-  price rows: a line "- Espresso | 2.40" becomes a row with the price right-aligned. Markdown passes
-  inline HTML through, so the row is built here and the rest of the line stays markdown.
-{%- endcomment -%}
-{%- if body contains " | " -%}
-  {%- assign lines = body | split: nl -%}
-  {%- assign body = "" -%}
-  {%- for line in lines -%}
-    {%- assign l = line | rstrip -%}
-    {%- if l contains " | " -%}
-      {%- assign lead = l | slice: 0, 2 -%}
-      {%- assign rest = l -%}
-      {%- if lead == "- " or lead == "* " -%}{%- assign rest = l | slice: 2, 1000 -%}{%- else -%}{%- assign lead = "" -%}{%- endif -%}
-      {%- assign parts = rest | split: " | " -%}
-      {%- assign item = parts.first | strip -%}
-      {%- assign price = parts.last | strip -%}
-      {%- capture l -%}{{ lead }}<span class="flex flex--row flex--between gap--small w--full" data-qr-row><span>{{ item }}</span><span class="shrink-0" data-qr-price>{{ price }}</span></span>{%- endcapture -%}
-    {%- endif -%}
-    {%- assign body = body | append: l | append: nl -%}
-  {%- endfor -%}
-{%- endif -%}
-{%- assign footer = wh.footer | default: base.footer | default: "" | strip -%}
-{%- assign title_bar = wh.title_bar | default: base.title_bar | default: trmnl.plugin_settings.instance_name | strip -%}
-{%- assign icon = wh.icon | default: base.icon | default: "none" -%}
-{%- assign image_url = wh.image_url | default: base.image_url | default: "" | strip -%}
+{%- assign payload = qr.payload | default: "" -%}
+{%- assign caption = qr.caption | default: "" -%}
+{%- assign title = qr.title | default: "" -%}
+{%- assign body = qr.body | default: "" -%}
+{%- assign footer = qr.footer | default: "" -%}
+{%- assign icon = qr.icon | default: "none" -%}
+{%- assign image_url = qr.image_url | default: "" -%}
 {%- assign has_visual = false -%}
-{%- if image_url != blank or icon != "none" -%}{%- assign has_visual = true -%}{%- endif -%}
+{%- if qr.has_visual -%}{%- assign has_visual = true -%}{%- endif -%}
 {%- comment -%} accent classes are only switched on by the script at the bottom, on color screens {%- endcomment -%}
 {%- assign accent_text = "text--red" -%}
 {%- assign accent_pill = "bg--red text--white px--3 rounded--small" -%}
@@ -162,12 +100,22 @@
 
 {%- comment -%} ---------- building blocks ---------- {%- endcomment -%}
 {%- capture qr_box -%}
-<div class="shrink-0 aspect--1/1 w--max-full {{ qr_dims }}" data-qr-box>
+{%- comment -%} p--2: a quiet zone, scanners need white space around the code {%- endcomment -%}
+<div class="shrink-0 aspect--1/1 w--max-full p--2 {{ qr_dims }}" data-qr-box>
   {%- if payload != blank -%}
-    {{ payload | qr_code: 11, level }}
+    {%- comment -%}
+      TRMNL's server can return the code at a fixed pixel size (width/height, no viewBox) where trmnlp
+      returns a scalable one. Normalize: give it a viewBox from its own size and let it fill the box.
+    {%- endcomment -%}
+    {%- capture qr_svg -%}{{ payload | qr_code: 11, level, "responsive" }}{%- endcapture -%}
+    {%- unless qr_svg contains "viewBox" -%}
+      {%- assign qr_px = qr_svg | split: 'width="' | slice: 1, 1 | first | split: '"' | first -%}
+      {%- assign qr_svg = qr_svg | replace_first: '<svg ', '<svg viewBox="0 0 QRPX QRPX" ' | replace: "QRPX", qr_px -%}
+    {%- endunless -%}
+    {{ qr_svg | replace_first: '<svg ', '<svg width="100%" height="100%" ' }}
   {%- else -%}
     <div class="flex flex--center h--full w--full outline rounded">
-      <span class="label text--center">{% if webhook_mode %}Send the payment details to the webhook{% else %}Fill in the payment details in the plugin settings{% endif %}</span>
+      <span class="label text--center">{{ qr.missing | default: "The plugin data is not available" }}</span>
     </div>
   {%- endif -%}
 </div>
@@ -184,9 +132,9 @@
 
 {%- capture body_html -%}
 {%- if show_body -%}
-<div class="richtext richtext--left stretch" data-qr-body>
+<div class="richtext richtext--left stretch w--full" data-qr-body>
   {%- comment -%} starts large; the script at the bottom shrinks it to fit {%- endcomment -%}
-  <div class="content content--large content--left text--left">
+  <div class="content content--large content--left text--left w--full w--max-full">
     {{ body | markdown_to_html }}
   </div>
 </div>
@@ -204,11 +152,10 @@
     {{ qr_box }}
     {%- if caption != blank and caption_under_qr -%}<span class="title {{ caption_size }} text--center" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
   </div>
-  <div class="flex flex--col flex--stretch-x flex--top gap--small stretch">
+  <div class="flex flex--col flex--stretch-x {% if show_body %}flex--top{% else %}flex--center-y{% endif %} gap--small stretch">
     {{ heading }}
     {%- if caption != blank and caption_under_qr == false -%}<span class="title {{ caption_size }}" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
     {{ body_html }}
-    {%- unless show_body -%}<div class="grow"></div>{%- endunless -%}
     {{ footer_html }}
   </div>
 </div>
@@ -222,10 +169,16 @@
 </div>
 {%- endif -%}
 
+{%- if qr.title_bar.show != false -%}
 <div class="title_bar">
+  {%- if qr.title_bar.icon_url != blank -%}
+  <img class="image" src="{{ qr.title_bar.icon_url }}" alt="">
+  {%- else -%}
   <svg class="image" width="24" height="24" viewBox="0 0 64 64"><rect x="4" y="4" width="22" height="22" rx="4"/><rect x="10" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="38" y="4" width="22" height="22" rx="4"/><rect x="44" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="4" y="38" width="22" height="22" rx="4"/><rect x="10" y="44" width="10" height="10" rx="2" fill="#fff"/><circle cx="49" cy="49" r="13"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-  <span class="title">{{ title_bar }}</span>
+  {%- endif -%}
+  <span class="title">{{ qr.title_bar.text | default: trmnl.plugin_settings.instance_name }}</span>
 </div>
+{%- endif -%}
 <script>
 (function () {
   var view = document.currentScript.closest('.view') || document;
@@ -290,6 +243,8 @@
         content.classList.add(SIZES[++i]);
       }
       while (over() && content.children.length > 1) content.removeChild(content.lastElementChild);
+      // a heading whose items were all cut is noise
+      while (content.children.length > 1 && /^H[1-6]$/.test(content.lastElementChild.tagName)) content.removeChild(content.lastElementChild);
       var last = content.lastElementChild;
       if (over() && last) {
         // rects are zoomed on high-density screens, line-height is not
