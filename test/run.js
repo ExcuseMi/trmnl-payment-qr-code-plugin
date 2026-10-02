@@ -79,7 +79,7 @@ const CASES = [
   // the coffee shop example from assets/examples: price rows, a logo image, payer picks the amount
   // a markdown --- becomes the framework's divider; dividers sit between QR, title, text and footer
   { name: 'dividers', fields: { body: '## Coffee\n\n- Espresso | €2.40\n\n---\n\n## Tea\n\n- Green tea | €2.20' }, payload: EPC_BASE, dividers: 4, matrix: [['og', [1]], ['og_dark', [1]]] },
-  { name: 'price list', fields: {}, webhook: Object.assign({}, require('../assets/examples/coffee-shop.json').merge_variables.payment, { image_url: IMG }), payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), caption: 'Scan, pay, enjoy', expectFields: { title: 'Northbean Coffee' }, priceRows: true, matrix: [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1]], ['sm', [1]], ['bwry', [1]]] },
+  { name: 'price list', fields: {}, webhook: Object.assign({}, require('../assets/examples/coffee-shop.json').merge_variables.payment, { image_url: IMG }), payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), caption: 'Scan, pay, enjoy', expectFields: { title: 'Northbean Coffee' }, priceRows: true, rowCount: 7, matrix: [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1]], ['sm', [1]], ['bwry', [1]]] },
   // a real instance: tiny payload (a short, low-version code) and nothing but the QR and its caption
   { name: 'short payload alone', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), caption: 'Any amount', matrix: [['og', ALL_VIEWS], ['x', [1]], ['og_portrait', [1]]] },
   // TRMNL's server returned the code at a fixed pixel size (no viewBox), which drew it small in the
@@ -88,6 +88,9 @@ const CASES = [
   // TRMNL's server returned width/height on the svg (drawn small, see above); as an <img> the svg
   // is strict XML, where a second width attribute breaks the image, so both variants must work
   { name: 'server svg with viewBox and size', fields: {}, payload: EPC_BASE, patch: (src) => src.replace("{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}", "{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' | replace_first: '<svg ', '<svg width=\"300\" height=\"300\" ' -%}"), fillsBox: true, matrix: [['og', [1, 4]], ['og_dark', [1]]] },
+  // TRMNL stores markup with CRLF line endings: every newline the template makes itself becomes
+  // \r\n, so splitting webhook text (plain \n) on it never matched and a price list collapsed
+  { name: 'template with CRLF line endings', fields: {}, webhook: require('../assets/examples/coffee-shop.json').merge_variables.payment, payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), crlfOk: true, priceRows: true, rowCount: 7, patch: (src) => src.replace(/\r?\n/g, '\r\n'), matrix: [['og', [1]]] },
   // an image that cannot load falls back to the same code inline
   { name: 'image fallback', fields: {}, payload: EPC_BASE, fallback: true, patch: (src) => src.replace('src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}"', 'src="data:image/svg+xml;base64,broken"'), matrix: [['og', [1, 4]]] },
   { name: 'fixed-size svg with text', fields: {}, payload: EPC_BASE, patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', [1, 2]], ['x', [1]]] },
@@ -304,7 +307,8 @@ function decode(png) {
         } else {
           const got = decode(png);
           if (got === null) errors.push('QR code does not scan');
-          else if (got !== c.payload) errors.push(`QR says ${JSON.stringify(got)}, expected ${JSON.stringify(c.payload)}`);
+          // EPC allows CR LF between lines as well as LF
+          else if ((c.crlfOk ? got.replace(/\r\n/g, '\n') : got) !== c.payload) errors.push(`QR says ${JSON.stringify(got)}, expected ${JSON.stringify(c.payload)}`);
           // at least 2 device pixels per module, below that phone cameras struggle on e-ink;
           // the viewport is the device's pixel size, so rects are device pixels already
           const px = m.qr.w / m.qr.modules;
@@ -333,6 +337,9 @@ function decode(png) {
         if (c.titleBar && m.titleBarText !== c.titleBar) errors.push(`title bar says "${m.titleBarText}", expected "${c.titleBar}"`);
         // lists get a mark (bullet or number) in front of every visible item
         if (m.items.some((i) => !i.marked)) errors.push('a list item has no mark');
+        // every row of the example fits the full screen, and no markdown is left unrendered
+        if (c.rowCount && view === 1 && dev !== 'og_portrait' && m.rows.length !== c.rowCount) errors.push(`${m.rows.length} price rows, expected ${c.rowCount}`);
+        if (/(^|\s)#{1,6} /.test(m.bodyText)) errors.push('raw markdown in the text: ' + JSON.stringify(m.bodyText.slice(0, 60)));
         if (c.priceRows && view !== 4) {
           if (!m.rows.length) errors.push('no price rows drawn');
           for (const row of m.rows) {

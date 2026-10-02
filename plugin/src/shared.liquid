@@ -59,11 +59,15 @@
   HTML through, so the row is built here and the rest of the line stays markdown.
 {%- endcomment -%}
 {%- assign body = src.body | default: "" | strip -%}
+{%- comment -%}
+  Lines are split with newline_to_br, not with a newline typed in this file: TRMNL stores the markup
+  with CRLF line endings, so a newline made here is "\r\n" and never matched the "\n" in the text.
+{%- endcomment -%}
 {%- if body contains " | " -%}
-  {%- assign lines = body | split: nl -%}
+  {%- assign lines = body | newline_to_br | split: "<br />" -%}
   {%- assign body = "" -%}
   {%- for line in lines -%}
-    {%- assign l = line | rstrip -%}
+    {%- assign l = line | strip_newlines | rstrip -%}
     {%- if l contains " | " -%}
       {%- assign lead = l | slice: 0, 2 -%}
       {%- assign rest = l -%}
