@@ -41,6 +41,27 @@
   {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = "Any amount" -%}{%- endif -%}
 {%- endif -%}
 {%- assign body = wh.body | default: cf.body | default: "" | strip -%}
+{%- comment -%}
+  price rows: a line "- Espresso | 2.40" becomes a row with the price right-aligned. Markdown passes
+  inline HTML through, so the row is built here and the rest of the line stays markdown.
+{%- endcomment -%}
+{%- if body contains " | " -%}
+  {%- assign lines = body | split: nl -%}
+  {%- assign body = "" -%}
+  {%- for line in lines -%}
+    {%- assign l = line | rstrip -%}
+    {%- if l contains " | " -%}
+      {%- assign lead = l | slice: 0, 2 -%}
+      {%- assign rest = l -%}
+      {%- if lead == "- " or lead == "* " -%}{%- assign rest = l | slice: 2, 1000 -%}{%- else -%}{%- assign lead = "" -%}{%- endif -%}
+      {%- assign parts = rest | split: " | " -%}
+      {%- assign item = parts.first | strip -%}
+      {%- assign price = parts.last | strip -%}
+      {%- capture l -%}{{ lead }}<span class="flex flex--row flex--between gap--small w--full" data-qr-row><span>{{ item }}</span><span class="shrink-0" data-qr-price>{{ price }}</span></span>{%- endcapture -%}
+    {%- endif -%}
+    {%- assign body = body | append: l | append: nl -%}
+  {%- endfor -%}
+{%- endif -%}
 {%- assign footer = wh.footer | default: cf.footer | default: "" | strip -%}
 {%- assign icon = wh.icon | default: cf.icon | default: "none" -%}
 {%- assign image_url = wh.image_url | default: cf.image_url | default: "" | strip -%}
@@ -219,6 +240,12 @@
       if (box._orig == null) box._orig = [content.className, content.innerHTML];
       content.className = box._orig[0];
       content.innerHTML = box._orig[1];
+      // the content column left-aligns its children, which shrinks a price list to its text;
+      // stretch the blocks holding price rows so the prices line up on the right edge
+      content.querySelectorAll('[data-qr-row]').forEach(function (row) {
+        var block = row.closest('ul, ol, p');
+        if (block) block.style.alignSelf = 'stretch';
+      });
       var over = function () { return content.scrollHeight > box.clientHeight + 1; };
       var i = SIZES.findIndex(function (c) { return content.classList.contains(c); });
       while (over() && i >= 0 && i < SIZES.length - 1) {

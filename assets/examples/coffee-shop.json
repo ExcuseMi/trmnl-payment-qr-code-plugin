@@ -1,0 +1,16 @@
+{
+  "merge_variables": {
+    "payment": {
+      "payment_type": "epc",
+      "epc_name": "Northbean Coffee",
+      "epc_iban": "BE71096123456769",
+      "epc_amount": "0",
+      "epc_reference": "Northbean Coffee",
+      "title": "Northbean Coffee",
+      "caption": "Scan, pay, enjoy",
+      "body": "## Coffee\n- Espresso | 2.40\n- Cappuccino | 3.20\n- Flat white | 3.60\n- Caffe latte | 3.60\n- Chai latte | 3.80\n\n## Something sweet\n- Butter croissant | 2.50\n- Cinnamon bun | 3.20\n\n*Oat milk +0.40*",
+      "footer": "Prices in EUR",
+      "image_url": "https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/assets/examples/northbean-logo.png"
+    }
+  }
+}

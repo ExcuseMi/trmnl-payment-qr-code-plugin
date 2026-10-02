@@ -74,6 +74,8 @@ const CASES = [
   { name: 'link', fields: { payment_type: 'text', qr_text: 'https://paypal.me/yourname/5', caption: 'PayPal' }, payload: 'https://paypal.me/yourname/5', matrix: [['og', [1, 4]]] },
   // a long payload makes a dense code: it must still scan in the smallest slot
   { name: 'dense link', fields: { payment_type: 'text', qr_text: 'https://example.com/pay?' + 'invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120) }, payload: 'https://example.com/pay?invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120), matrix: [['og', ALL_VIEWS]] },
+  // the coffee shop example from assets/examples: price rows, a logo image, payer picks the amount
+  { name: 'price list', fields: {}, webhook: Object.assign({}, require('../assets/examples/coffee-shop.json').merge_variables.payment, { image_url: IMG }), payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), caption: 'Scan, pay, enjoy', expectFields: { title: 'Northbean Coffee' }, priceRows: true, matrix: [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1]], ['sm', [1]], ['bwry', [1]]] },
   // payload rules
   { name: 'amount open', fields: { epc_amount: '' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
   { name: 'amount zero is open', fields: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
@@ -167,6 +169,12 @@ function measure() {
     const c = box.firstElementChild;
     if (c.scrollHeight > box.clientHeight + 1) out.bodyOverflow = true;
   });
+  out.rows = Array.from(view.querySelectorAll('[data-qr-row]')).filter((row) => row.getBoundingClientRect().height > 0).map((row) => {
+    const box = row.closest('.content').getBoundingClientRect();
+    const name = row.firstElementChild.getBoundingClientRect();
+    const price = row.lastElementChild.getBoundingClientRect();
+    return { text: row.textContent.trim(), gapRight: box.right - price.right, apart: price.left - name.right };
+  });
   out.caption = Array.from(layout.querySelectorAll('[data-accent^="bg--"]')).map((e) => e.textContent.trim());
   out.bodyText = Array.from(layout.querySelectorAll('[data-qr-body]')).map((e) => e.textContent.trim()).join(' ');
   out.titleText = Array.from(layout.querySelectorAll('.title:not([data-accent])')).map((e) => e.textContent.trim()).join(' ');
@@ -243,6 +251,13 @@ function decode(png) {
           if (m.titleBar && t.b > m.titleBar.y + 1) errors.push(`"${t.text}" runs under the title bar`);
         }
         if (m.bodyOverflow) errors.push('text overflows its box');
+        if (c.priceRows && view !== 4) {
+          if (!m.rows.length) errors.push('no price rows drawn');
+          for (const row of m.rows) {
+            if (row.gapRight > 2) errors.push(`price in "${row.text}" is not right-aligned (${row.gapRight.toFixed(0)}px short)`);
+            if (row.apart < 0) errors.push(`price in "${row.text}" overlaps the item`);
+          }
+        }
         if (c.caption && m.layout && !m.caption.includes(c.caption)) errors.push(`caption is ${JSON.stringify(m.caption)}, expected "${c.caption}"`);
         if (c.expectFields && c.expectFields.title && !m.titleText.includes(c.expectFields.title)) errors.push(`title "${c.expectFields.title}" not shown`);
         // portrait stacks the side-by-side layout: the QR comes first, the text below it
