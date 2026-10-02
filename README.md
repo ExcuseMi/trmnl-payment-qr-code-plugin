@@ -12,6 +12,7 @@ Show a scannable payment QR code with your own text on a TRMNL.
 - Markdown text that shrinks to fit, with bullets and price rows: `- Espresso | €2.40` puts the price on the right with a dotted leader
 - An icon or your own image next to the title, and your own title bar text
 - All four view sizes, OG, TRMNL X and `sm` devices; red accents on color panels (BWRY etc.)
+- In dark mode TRMNL inverts the code along with the screen; inverted QR codes are valid and scan on phones
 - Few settings: text size, QR size and error correction are chosen automatically
 
 | | |
