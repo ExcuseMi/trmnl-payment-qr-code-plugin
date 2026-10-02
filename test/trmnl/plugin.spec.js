@@ -47,6 +47,11 @@ async function checkScreen(screen, { content, view, payload }) {
   await expect(screen.locator('[data-qr-layout]')).toHaveAttribute('data-qr-layout', expectedLayout(content, view));
   await expect(screen).toHaveQr(payload);
   await expect(screen).toHaveNoOverflow();
+  // when there is text it keeps a fair share of the space: once only its heading was left
+  if ((content.body || '').trim() && view !== 'quadrant') {
+    const shown = await screen.page.evaluate(() => (document.querySelector('[data-qr-body]') || {}).innerText || '');
+    expect(shown.replace(/\s+/g, ' ').trim().length, 'visible text length').toBeGreaterThanOrEqual(Math.min(40, content.body.length));
+  }
   if (payload === null) return;
   await expect(screen).toHaveNoOverlap('.title, .label, [data-qr-body]', '[data-qr-box]');
   // the code has modules of at least 2 device px, fills the padded area of its box, and keeps the
@@ -93,6 +98,27 @@ for (const s of matrix({ device: ['og_plus'], orientation: ['portrait'], view: [
     expect(title.y, 'title below the QR').toBeGreaterThanOrEqual(qr.y + qr.height - 1);
   });
 }
+
+// ---------------------------------------------------------------- big screens give the text room
+for (const s of matrix({ device: ['v2'], view: ['full'] })) {
+  test(`large screen caps the code beside text · ${s.label}`, async ({ trmnl }) => {
+    const screen = await trmnl.render({ ...s, fields: WEBHOOK, webhook: coffeeShop });
+    await checkScreen(screen, { content: coffeeShop.merge_variables.payment, view: 'full', payload: NORTHBEAN });
+    const qr = await screen.box('[data-qr-box]');
+    const layout = await screen.box('[data-qr-layout]');
+    const text = await screen.box('[data-qr-body]');
+    expect(qr.height / layout.height, 'code height share').toBeLessThanOrEqual(0.62);
+    expect(text.width / layout.width, 'text column width share').toBeGreaterThanOrEqual(0.4);
+  });
+}
+test('large screen keeps the full code without text', async ({ trmnl }) => {
+  const content = { ...BASE, body: '' };
+  const screen = await trmnl.render({ device: 'v2', fields: content });
+  await checkScreen(screen, { content, view: 'full', payload: JANE });
+  const qr = await screen.box('[data-qr-box]');
+  const layout = await screen.box('[data-qr-layout]');
+  expect(qr.height / layout.height).toBeGreaterThan(0.62);
+});
 
 // ---------------------------------------------------------------- the coffee shop price list
 for (const s of matrix({ device: DEVICES, view: VIEWS })) {

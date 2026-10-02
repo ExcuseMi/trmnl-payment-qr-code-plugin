@@ -185,6 +185,13 @@
 {%- if qr_h > 100 -%}{%- assign qr_h = 100 -%}{%- endif -%}
 {%- if qr_h < 30 -%}{%- assign qr_h = 30 -%}{%- endif -%}
 {%- assign qr_dims = "h--[" | append: qr_h | append: "cqh] w--[" | append: qr_h | append: "cqh]" -%}
+{%- comment -%}
+  On large landscape screens (TRMNL X) a full-height code is far bigger than a phone needs and squeezes
+  the text, so with text beside it the code is capped at 60 % of the height and the text gets the rest.
+{%- endcomment -%}
+{%- if view == 1 and mode == "beside" and show_body -%}
+  {%- assign qr_dims = qr_dims | append: " lg:landscape:h--[60cqh]" -%}
+{%- endif -%}
 {%- if view == 1 and mode == "beside" -%}
   {%- assign qr_hp = 100 -%}
   {%- if caption != blank -%}{%- assign qr_hp = qr_hp | minus: 7 -%}{%- endif -%}
@@ -242,7 +249,7 @@
 
 {%- capture heading -%}
 {%- if title != blank or has_visual -%}
-<div class="flex flex--row flex--center-y gap--small{% if mode == "beside" %} flex--left{% endif %}">
+<div class="flex flex--row flex--center-y gap--small shrink-0{% if mode == "beside" %} flex--left{% endif %}">
   {%- if has_visual -%}<div class="shrink-0 h--10 w--10" data-accent="{{ accent_text }}">{{ visual }}</div>{%- endif -%}
   {%- comment -%} w--min-0: a flex item will not shrink below its longest word otherwise, and runs out of its column {%- endcomment -%}
   {%- if title != blank -%}<span class="title {{ title_size }} w--min-0" data-clamp="2">{{ title }}</span>{%- endif -%}
@@ -252,7 +259,8 @@
 
 {%- capture body_html -%}
 {%- if show_body -%}
-<div class="richtext richtext--left stretch w--full" data-qr-body>
+{%- comment -%} its content's height, shrinking (min height 0) when the text is too long, so the fit script can step it down {%- endcomment -%}
+<div class="richtext richtext--left h--min-0 w--full" data-qr-body>
   {%- comment -%} starts large; the script at the bottom shrinks it to fit {%- endcomment -%}
   <div class="content content--large content--left text--left w--full w--max-full">
     {{ body | markdown_to_html }}
@@ -263,7 +271,7 @@
 
 {%- capture footer_html -%}
 {%- comment -%} no data-clamp: on TRMNL's server the clamp cut "Thank you!" to "Thank y..." although it fit {%- endcomment -%}
-{%- if footer != blank -%}<span class="label{% if mode != "beside" %} text--center{% endif %}">{{ footer }}</span>{%- endif -%}
+{%- if footer != blank -%}<span class="label shrink-0{% if mode != "beside" %} text--center{% endif %}">{{ footer }}</span>{%- endif -%}
 {%- endcapture -%}
 
 {%- comment -%} ---------- layouts ---------- {%- endcomment -%}
@@ -275,12 +283,13 @@
   </div>
   {%- comment -%} dividers: between QR and text (not when stacked on portrait), under the title, above the footer {%- endcomment -%}
   <div class="divider--v portrait:hidden" data-qr-divider></div>
-  <div class="flex flex--col flex--stretch-x {% if show_body %}flex--top{% else %}flex--center-y{% endif %} gap--small stretch">
+  {%- comment -%} centered vertically, like the code beside it {%- endcomment -%}
+  <div class="flex flex--col flex--stretch-x flex--center-y gap--small stretch">
     {{ heading }}
     {%- if caption != blank and caption_under_qr == false -%}<span class="title {{ caption_size }}" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
-    {%- if show_body and heading != blank -%}<div class="divider" data-qr-divider></div>{%- endif -%}
+    {%- if show_body and heading != blank -%}<div class="divider shrink-0" data-qr-divider></div>{%- endif -%}
     {{ body_html }}
-    {%- if footer != blank and show_body -%}<div class="divider" data-qr-divider></div>{%- endif -%}
+    {%- if footer != blank and show_body -%}<div class="divider shrink-0" data-qr-divider></div>{%- endif -%}
     {{ footer_html }}
   </div>
 </div>
@@ -290,7 +299,7 @@
   {{ qr_box }}
   {%- if caption != blank -%}<span class="title {{ caption_size }} text--center" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
   {%- if mode == "stacked" -%}
-    {%- if show_body -%}<div class="divider w--full" data-qr-divider></div>{%- endif -%}
+    {%- if show_body -%}<div class="divider w--full shrink-0" data-qr-divider></div>{%- endif -%}
     {{ body_html }}
   {%- endif -%}
   {{ footer_html }}
@@ -395,9 +404,15 @@
       while (over()) {
         var tail = content.lastElementChild;
         if (!tail) break;
-        if ((tail.tagName === 'UL' || tail.tagName === 'OL') && tail.children.length > 1) tail.removeChild(tail.lastElementChild);
-        else if (content.children.length > 1) content.removeChild(tail);
-        else break;
+        if ((tail.tagName === 'UL' || tail.tagName === 'OL') && tail.children.length > 1) { tail.removeChild(tail.lastElementChild); continue; }
+        if (content.children.length < 2) break;
+        // drop the last block only if the rest still overflows without it; otherwise keep it and
+        // let the clamp below cut it to the lines that fit (a long paragraph once vanished whole)
+        tail.style.display = 'none';
+        var stillOver = over();
+        tail.style.display = '';
+        if (!stillOver) break;
+        content.removeChild(tail);
       }
       // a heading whose items were all cut is noise
       while (content.children.length > 1 && /^H[1-6]$/.test(content.lastElementChild.tagName)) content.removeChild(content.lastElementChild);
