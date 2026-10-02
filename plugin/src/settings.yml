@@ -37,12 +37,12 @@ custom_fields:
   field_type: author_bio
   category: finance,personal
   help_text: TRMNL X Ready
-  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> set Data Source to Webhook and everything below can be overridden from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.
+  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> set Data Source to Webhook and fill the screen from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), for example to change prices, amount or reference per day.
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
 - keyname: data_source
   name: Data Source
   field_type: select
-  description: Where the screen gets its content. With a webhook you can change the payment (amount, reference, text) without opening these settings; anything the webhook leaves out comes from the fields below.
+  description: Where the screen gets its content. With a webhook the payment (amount, reference, text) can be changed without opening these settings, for example by staff using a simple web page on their phone, with no TRMNL account needed. With Webhook the fields below are hidden and the screen shows only what the webhook sent.
   options:
   - Plugin settings: settings
   - Webhook: webhook
@@ -51,6 +51,21 @@ custom_fields:
   - when: settings
     hidden:
     - webhook_url
+  - when: webhook
+    hidden:
+    - payment_type
+    - epc_name
+    - epc_iban
+    - epc_amount
+    - epc_reference
+    - qr_text
+    - title
+    - caption
+    - body
+    - footer
+    - title_bar
+    - icon
+    - image_url
 - keyname: webhook_url
   name: Webhook URL
   field_type: copyable_webhook_url
@@ -68,17 +83,12 @@ custom_fields:
   - when: epc
     hidden:
     - qr_text
-    required:
-    - epc_name
-    - epc_iban
   - when: text
     hidden:
     - epc_name
     - epc_iban
     - epc_amount
     - epc_reference
-    required:
-    - qr_text
 - keyname: epc_name
   name: Beneficiary Name
   field_type: string

@@ -99,7 +99,7 @@
     <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="10" width="10" height="10" rx="2" fill="var(--card)"/><rect x="38" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="44" y="10" width="10" height="10" rx="2" fill="var(--card)"/><rect x="4" y="38" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="44" width="10" height="10" rx="2" fill="var(--card)"/><circle cx="49" cy="49" r="13" fill="#f8654b"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
     <div>
       <h1>Payment QR Code</h1>
-      <p>Change what your TRMNL shows without opening the plugin settings.</p>
+      <p>Change what your TRMNL shows without opening the plugin settings. Share this page (or a downloaded copy) with your team so staff can update the screen without a TRMNL account.</p>
     </div>
   </div>
 </div>
@@ -124,25 +124,23 @@
 
     <form id="form" autocomplete="off">
       <section class="card">
-        <div class="card-head"><span class="step">2</span><h2>Payment</h2><span class="sub">empty = plugin settings</span></div>
+        <div class="card-head"><span class="step">2</span><h2>Payment</h2></div>
         <div class="card-body">
           <label for="payment_type">Payment type</label>
           <select id="payment_type">
-            <option value="">Use plugin settings</option>
             <option value="epc">SEPA transfer (EPC QR)</option>
             <option value="text">Payment link or text</option>
           </select>
 
           <div id="epcFields">
             <div class="row">
-              <div><label for="epc_name">Beneficiary name</label><input id="epc_name" maxlength="70"></div>
-              <div><label for="epc_iban">IBAN</label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
+              <div><label for="epc_name">Beneficiary name <small>required</small></label><input id="epc_name" maxlength="70"></div>
+              <div><label for="epc_iban">IBAN <small>required</small></label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
             </div>
             <div class="row">
               <div>
                 <label for="amount_mode">Amount</label>
                 <select id="amount_mode">
-                  <option value="">Use plugin settings</option>
                   <option value="fixed">Fixed amount</option>
                   <option value="open">Payer chooses</option>
                 </select>
@@ -153,7 +151,7 @@
           </div>
 
           <div id="textFields">
-            <label for="qr_text">Payment link or text</label>
+            <label for="qr_text">Payment link or text <small>required</small></label>
             <input id="qr_text" placeholder="https://paypal.me/yourname/12.50" spellcheck="false">
           </div>
         </div>
@@ -190,7 +188,6 @@
             <div>
               <label for="icon">Icon</label>
               <select id="icon">
-                <option value="">Use plugin settings</option>
                 <option value="none">None</option><option value="heart">Heart</option><option value="coffee">Coffee</option>
                 <option value="beer">Beer</option><option value="food">Food</option><option value="gift">Gift</option>
                 <option value="cart">Shopping cart</option><option value="home">Home</option><option value="users">Group</option>
@@ -232,7 +229,14 @@
         </div>
       </div>
       <div class="stage"><div class="bezel"><div class="screen-box" id="screenBox"></div></div></div>
-      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet. Fields left empty show sample values here; your device uses your plugin settings for them.</div>
+      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet: this is what the device shows after you send.</div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>JSON to send</h2><button type="button" id="copyJson" style="margin-left:auto;padding:5px 10px;font-size:13px">Copy</button></div>
+      <div class="card-body">
+        <pre id="jsonOut"></pre>
+        <div class="hint">POST this to the webhook URL with <code>Content-Type: application/json</code> to do the same from a script.</div>
+      </div>
     </section>
     <details class="card">
       <summary>Data on TRMNL now</summary>
@@ -298,18 +302,22 @@ function readForm() {
     const v = $(f).value.trim();
     if (v) p[f] = f === 'epc_iban' ? v.replace(/\s+/g, '').toUpperCase() : v;
   });
+  if (p.payment_type === 'text') { ['epc_name', 'epc_iban', 'epc_amount', 'epc_reference', 'amount_mode'].forEach((k) => delete p[k]); }
+  else delete p.qr_text;
+  if (p.icon === 'none') delete p.icon;
   if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
   // the template treats an amount of 0 as "payer chooses"
   if (p.amount_mode === 'open') p.epc_amount = '0';
-  else if (p.amount_mode === 'fixed' && !p.epc_amount) delete p.epc_amount;
   delete p.amount_mode;
   return p;
 }
 
 function fillForm(p) {
   FIELDS.forEach((f) => { $(f).value = (p && p[f] != null) ? p[f] : ''; });
+  // selects have no empty option: fall back to their first choice
+  ['payment_type', 'icon'].forEach((f) => { if (!$(f).value) $(f).selectedIndex = 0; });
   const a = p && p.epc_amount;
-  $('amount_mode').value = a == null || a === '' ? '' : Number(String(a).replace(',', '.')) > 0 ? 'fixed' : 'open';
+  $('amount_mode').value = a === '0' || a === 0 ? 'open' : 'fixed';
   if ($('amount_mode').value === 'open') $('epc_amount').value = '';
   refresh();
 }
@@ -338,7 +346,7 @@ function refresh() {
   const p = readForm();
   const type = p.payment_type;
   $('epcFields').classList.toggle('hidden', type === 'text');
-  $('textFields').classList.toggle('hidden', type === 'epc');
+  $('textFields').classList.toggle('hidden', type !== 'text');
   $('amountWrap').classList.toggle('hidden', $('amount_mode').value === 'open');
 
   const iban = $('epc_iban').value.replace(/\s+/g, '').toUpperCase();
@@ -353,6 +361,7 @@ function refresh() {
   $('meter').style.color = bytes > MAX_BYTES ? 'var(--err)' : '';
   if (!$('mdPreview').classList.contains('hidden')) renderMarkdown();
   scheduleRender();
+  $('jsonOut').textContent = JSON.stringify(payloadFor(p), null, 2);
   return { p, bytes, ibanBad: !!iban && !ibanValid(iban), amountBad: Number.isNaN(amount) };
 }
 
@@ -383,13 +392,8 @@ const DEVICES = {
   bwry: { w: 800, h: 480, classes: 'screen--og screen--md screen--density-1x screen--color-4bwry screen--fonts-trmnl' },
 };
 const VIEWS = { 1: ['full', 1, 1], 2: ['half_horizontal', 1, 0.5], 3: ['half_vertical', 0.5, 1], 4: ['quadrant', 0.5, 0.5] };
-// stands in for the plugin settings, which the webhook cannot read
-const SAMPLE = {
-  payment_type: 'epc', epc_name: 'Jane Doe', epc_iban: 'BE71096123456769', epc_amount: '12.50', epc_reference: 'Coffee fund',
-  qr_text: 'https://paypal.me/yourname', title: 'Buy me a coffee', caption: '',
-  body: '## Coffee fund\n\nEvery cup is **EUR 0.50**.\n\n- Open your banking app\n- Scan the code',
-  footer: 'Thank you!', icon: 'coffee', image_url: '',
-};
+// in webhook mode the device shows only the webhook data, so the preview needs no settings
+const SAMPLE = { data_source: 'webhook' };
 let engine = null, template = null, device = 'og', view = 1, frame = null, renderTimer = null, renderSeq = 0;
 
 function utf8(s) { return unescape(encodeURIComponent(s)); }
@@ -479,6 +483,12 @@ async function renderNow() {
 segment($('deviceSeg'), (b) => { device = b.dataset.device; buildFrame(); });
 segment($('viewSeg'), (b) => { view = Number(b.dataset.view); buildFrame(); });
 
+$('copyJson').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('jsonOut').textContent); $('copyJson').textContent = 'Copied'; }
+  catch (e) { $('copyJson').textContent = 'Select and copy'; }
+  setTimeout(() => { $('copyJson').textContent = 'Copy'; }, 1500);
+});
+
 // ---- talking to TRMNL
 async function call(method, body) {
   const url = endpoint();
@@ -495,7 +505,7 @@ async function call(method, body) {
 function showCurrent(data) {
   const p = data && data.merge_variables && data.merge_variables.payment;
   if (!p || !Object.keys(p).filter((k) => k !== 'updated_at').length) {
-    $('current').textContent = 'No overrides: the device shows the plugin settings.';
+    $('current').textContent = 'Nothing sent yet, or cleared: the device asks for payment details.';
     return p || {};
   }
   const when = p.updated_at ? new Date(p.updated_at * 1000).toLocaleString() : 'unknown';
@@ -518,6 +528,10 @@ $('loadBtn').addEventListener('click', load);
 $('form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const r = refresh();
+  // nothing falls back to the plugin settings in webhook mode, so the payment itself is required
+  if (r.p.payment_type === 'text' ? !r.p.qr_text : !(r.p.epc_name && r.p.epc_iban)) {
+    status(r.p.payment_type === 'text' ? 'Fill in the payment link first.' : 'Fill in the beneficiary name and IBAN first.', 'err'); return;
+  }
   if (r.ibanBad) { status('Fix the IBAN first.', 'err'); return; }
   if (r.amountBad) { status('Fix the amount first.', 'err'); return; }
   if (r.bytes > MAX_BYTES) { status('Too much data for a TRMNL webhook. Shorten the text.', 'err'); return; }
@@ -532,14 +546,14 @@ $('form').addEventListener('submit', async (e) => {
 });
 
 $('clearBtn').addEventListener('click', async () => {
-  if (!confirm('Remove all overrides? The device goes back to the plugin settings.')) return;
+  if (!confirm('Clear the screen? The device shows a message asking for payment details until you send again.')) return;
   try {
     status('Clearing...');
     const body = payloadFor({});
     if (await call('POST', body) === null) return;
     showCurrent(body);
     fillForm({});
-    status('Cleared. The device shows the plugin settings after its next refresh.', 'ok');
+    status('Cleared. The device updates after its next refresh.', 'ok');
   } catch (e) { status(e.message, 'err'); }
 });
 
@@ -556,6 +570,7 @@ $('downloadBtn').addEventListener('click', () => {
   doc.getElementById('webhook').setAttribute('value', url);
   doc.getElementById('screenBox').innerHTML = '';
   doc.getElementById('mdPreview').innerHTML = '';
+  doc.getElementById('jsonOut').textContent = '';
   doc.getElementById('status').textContent = '';
   doc.getElementById('current').textContent = 'Nothing loaded yet.';
   const out = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;

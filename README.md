@@ -19,9 +19,11 @@ Show a scannable payment QR code with your own text on a TRMNL.
 
 ## Optional webhook
 
-Set **Data Source** to **Webhook** in the plugin settings; the copyable Webhook URL appears below it. The plugin settings are then the defaults. Data sent to the plugin's webhook overrides them field by field, for example a new amount and reference per payment. Clearing it shows the settings again.
+Set **Data Source** to **Webhook** in the plugin settings: the content fields hide, a copyable Webhook URL appears, and the screen shows only what is sent to that URL (until then it asks for payment details).
 
-**Web editor:** <https://excusemi.github.io/trmnl-payment-qr-code-plugin/>. Paste your webhook URL, change fields with a live device preview (rendered from this plugin's own template), send or clear. "Download my editor" saves a single HTML file with your webhook URL built in.
+This is handy when other people keep the screen up to date: give employees the editor link (or the downloaded editor file) and they can change today's prices, amount or reference from a phone, without access to your TRMNL account or its settings.
+
+**Web editor:** <https://excusemi.github.io/trmnl-payment-qr-code-plugin/>. Paste your webhook URL, change fields with a live device preview (rendered from this plugin's own template) and the JSON it will send, then send or clear. "Download my editor" saves a single HTML file with your webhook URL built in.
 
 Anyone with the webhook URL can change the QR code, so keep the URL (and the downloaded file) private.
 
@@ -36,7 +38,7 @@ curl "https://trmnl.com/api/custom_plugins/<uuid>" -H "Content-Type: application
   -d '{"merge_variables": {"payment": {"epc_amount": "42.00", "epc_reference": "Pizza night", "updated_at": 1790000000}}}'
 ```
 
-Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `icon`, `image_url`. An empty value falls back to the setting. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
 
 ## Development
 

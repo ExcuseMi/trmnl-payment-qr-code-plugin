@@ -4,18 +4,22 @@
   wh = values pushed through the webhook ({"merge_variables": {"payment": {...}}}, same keys as the
   settings). Each one overrides its setting; a missing or empty key falls back to the setting.
 {%- endcomment -%}
-{%- assign wh = payment -%}
-{%- comment -%} with "Plugin settings" as the data source, webhook data is ignored {%- endcomment -%}
-{%- if cf.data_source != "webhook" -%}{%- assign wh = nil -%}{%- endif -%}
+{%- comment -%}
+  One source at a time: "Plugin settings" reads the fields (webhook data is ignored), "Webhook" reads
+  only what was sent (the fields are hidden in the form, so stale values must not leak through).
+{%- endcomment -%}
+{%- assign webhook_mode = false -%}
+{%- if cf.data_source == "webhook" -%}{%- assign webhook_mode = true -%}{%- endif -%}
+{%- if webhook_mode -%}{%- assign wh = payment -%}{%- assign base = nil -%}{%- else -%}{%- assign wh = nil -%}{%- assign base = cf -%}{%- endif -%}
 {%- capture nl %}
 {% endcapture -%}
 
 {%- comment -%} ---------- payload: an empty or zero amount lets the payer choose ---------- {%- endcomment -%}
-{%- assign payment_type = wh.payment_type | default: cf.payment_type | default: "epc" -%}
-{%- assign iban = wh.epc_iban | default: cf.epc_iban | default: "" | remove: " " | upcase -%}
-{%- assign beneficiary = wh.epc_name | default: cf.epc_name | default: "" | strip | truncate: 70, "" -%}
-{%- assign reference = wh.epc_reference | default: cf.epc_reference | default: "" | strip | truncate: 140, "" -%}
-{%- assign amount_raw = wh.epc_amount | default: cf.epc_amount | default: "" | strip | replace: ",", "." -%}
+{%- assign payment_type = wh.payment_type | default: base.payment_type | default: "epc" -%}
+{%- assign iban = wh.epc_iban | default: base.epc_iban | default: "" | remove: " " | upcase -%}
+{%- assign beneficiary = wh.epc_name | default: base.epc_name | default: "" | strip | truncate: 70, "" -%}
+{%- assign reference = wh.epc_reference | default: base.epc_reference | default: "" | strip | truncate: 140, "" -%}
+{%- assign amount_raw = wh.epc_amount | default: base.epc_amount | default: "" | strip | replace: ",", "." -%}
 {%- assign amount = "" -%}
 {%- assign amount_display = "" -%}
 {%- if amount_raw != blank -%}
@@ -33,16 +37,16 @@
     {%- capture payload -%}BCD{{ nl }}002{{ nl }}1{{ nl }}SCT{{ nl }}{{ nl }}{{ beneficiary }}{{ nl }}{{ iban }}{{ nl }}{{ amount_field }}{{ nl }}{{ nl }}{{ nl }}{{ reference }}{%- endcapture -%}
   {%- endif -%}
 {%- else -%}
-  {%- assign payload = wh.qr_text | default: cf.qr_text | default: "" | strip -%}
+  {%- assign payload = wh.qr_text | default: base.qr_text | default: "" | strip -%}
 {%- endif -%}
 
 {%- comment -%} ---------- content ---------- {%- endcomment -%}
-{%- assign title = wh.title | default: cf.title | default: "" | strip -%}
-{%- assign caption = wh.caption | default: cf.caption | default: "" | strip -%}
-{%- if caption == blank and payment_type == "epc" -%}
+{%- assign title = wh.title | default: base.title | default: "" | strip -%}
+{%- assign caption = wh.caption | default: base.caption | default: "" | strip -%}
+{%- if caption == blank and payment_type == "epc" and payload != blank -%}
   {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = "Any amount" -%}{%- endif -%}
 {%- endif -%}
-{%- assign body = wh.body | default: cf.body | default: "" | strip -%}
+{%- assign body = wh.body | default: base.body | default: "" | strip -%}
 {%- comment -%}
   price rows: a line "- Espresso | 2.40" becomes a row with the price right-aligned. Markdown passes
   inline HTML through, so the row is built here and the rest of the line stays markdown.
@@ -64,10 +68,10 @@
     {%- assign body = body | append: l | append: nl -%}
   {%- endfor -%}
 {%- endif -%}
-{%- assign footer = wh.footer | default: cf.footer | default: "" | strip -%}
-{%- assign title_bar = wh.title_bar | default: cf.title_bar | default: trmnl.plugin_settings.instance_name | strip -%}
-{%- assign icon = wh.icon | default: cf.icon | default: "none" -%}
-{%- assign image_url = wh.image_url | default: cf.image_url | default: "" | strip -%}
+{%- assign footer = wh.footer | default: base.footer | default: "" | strip -%}
+{%- assign title_bar = wh.title_bar | default: base.title_bar | default: trmnl.plugin_settings.instance_name | strip -%}
+{%- assign icon = wh.icon | default: base.icon | default: "none" -%}
+{%- assign image_url = wh.image_url | default: base.image_url | default: "" | strip -%}
 {%- assign has_visual = false -%}
 {%- if image_url != blank or icon != "none" -%}{%- assign has_visual = true -%}{%- endif -%}
 {%- comment -%} accent classes are only switched on by the script at the bottom, on color screens {%- endcomment -%}
@@ -163,7 +167,7 @@
     {{ payload | qr_code: 11, level }}
   {%- else -%}
     <div class="flex flex--center h--full w--full outline rounded">
-      <span class="label label--small text--center">Fill in the payment details in the plugin settings</span>
+      <span class="label text--center">{% if webhook_mode %}Send the payment details to the webhook{% else %}Fill in the payment details in the plugin settings{% endif %}</span>
     </div>
   {%- endif -%}
 </div>

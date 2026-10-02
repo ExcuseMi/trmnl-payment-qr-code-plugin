@@ -86,18 +86,19 @@ const CASES = [
   { name: 'own caption', fields: { caption: 'Scan to pay' }, payload: EPC_BASE, caption: 'Scan to pay', matrix: [['og', [1]]] },
   { name: 'missing iban', fields: { epc_iban: '' }, payload: null, matrix: [['og', [1, 4]]] },
   // webhook: overrides win field by field, empty values fall back to the settings
-  { name: 'webhook overrides', fields: {}, webhook: { epc_amount: '42', epc_reference: 'Pizza', title: 'Pizza night' }, payload: epc('Jane Doe', 'BE71096123456769', '42.00', 'Pizza'), expectFields: { title: 'Pizza night' }, matrix: [['og', [1, 2]]] },
-  // an empty webhook value means "use the setting", it does not clear it
-  { name: 'webhook empty value falls back', fields: {}, webhook: { body: '', title: '' }, payload: EPC_BASE, expectFields: { title: 'Buy me a coffee' }, matrix: [['og', [1]]] },
+  { name: 'webhook data', fields: {}, webhook: Object.assign({}, BASE, { epc_amount: '42', epc_reference: 'Pizza', title: 'Pizza night' }), payload: epc('Jane Doe', 'BE71096123456769', '42.00', 'Pizza'), expectFields: { title: 'Pizza night' }, matrix: [['og', [1, 2]]] },
+  // in webhook mode the (hidden) settings never leak through: only the webhook counts
+  { name: 'webhook ignores settings', fields: {}, webhook: { title: 'Only a title' }, payload: null, expectFields: { title: 'Only a title' }, matrix: [['og', [1, 4]]] },
   // a QR without a caption in a short view once computed a height above 100% and collapsed
   { name: 'no caption, short view', fields: { payment_type: 'text', qr_text: 'https://paypal.me/yourname' }, payload: 'https://paypal.me/yourname', matrix: [['og', [1, 2, 4]], ['x', [2]]] },
-  { name: 'webhook open amount', fields: {}, webhook: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
-  { name: 'webhook cleared', fields: {}, webhook: { updated_at: 1700000000 }, payload: EPC_BASE, matrix: [['og', [1]]] },
+  { name: 'webhook open amount', fields: {}, webhook: Object.assign({}, BASE, { epc_amount: '0' }), payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
+  { name: 'webhook cleared', fields: {}, webhook: { updated_at: 1700000000 }, payload: null, matrix: [['og', [1, 4]]] },
+  { name: 'webhook mode, nothing sent yet', fields: { data_source: 'webhook' }, payload: null, matrix: [['og', [1]]] },
   { name: 'title bar text', fields: { title_bar: 'Pay at the counter' }, payload: EPC_BASE, titleBar: 'Pay at the counter', matrix: [['og', [1, 4]]] },
-  { name: 'title bar from webhook', fields: { title_bar: 'From settings' }, webhook: { title_bar: 'From webhook' }, payload: EPC_BASE, titleBar: 'From webhook', matrix: [['og', [1]]] },
+  { name: 'title bar from webhook', fields: { title_bar: 'From settings' }, webhook: Object.assign({}, BASE, { title_bar: 'From webhook' }), payload: EPC_BASE, titleBar: 'From webhook', matrix: [['og', [1]]] },
   { name: 'title bar defaults to plugin name', fields: {}, payload: EPC_BASE, titleBar: 'Payment QR Code', matrix: [['og', [1]]] },
   { name: 'settings ignore webhook data', fields: { data_source: 'settings' }, webhook: { title: 'From webhook', epc_amount: '42' }, payload: EPC_BASE, expectFields: { title: 'Buy me a coffee' }, matrix: [['og', [1]]] },
-  { name: 'webhook switches to link', fields: {}, webhook: { payment_type: 'text', qr_text: 'https://revolut.me/jane' }, payload: 'https://revolut.me/jane', matrix: [['og', [1]]] },
+  { name: 'webhook link', fields: {}, webhook: Object.assign({}, BASE, { payment_type: 'text', qr_text: 'https://revolut.me/jane' }), payload: 'https://revolut.me/jane', matrix: [['og', [1]]] },
 ];
 
 // ---------------------------------------------------------------- build (one trmnlp build per content)
@@ -183,6 +184,7 @@ function measure() {
   });
   out.items = Array.from(layout.querySelectorAll('[data-qr-body] li')).filter((li) => li.getBoundingClientRect().height > 0)
     .map((li) => ({ marked: !!li.querySelector('[data-qr-mark]') }));
+  out.placeholder = !!document.querySelector('[data-qr-box] .label');
   out.caption = Array.from(layout.querySelectorAll('[data-accent^="bg--"]')).map((e) => e.textContent.trim());
   out.bodyText = Array.from(layout.querySelectorAll('[data-qr-body]')).map((e) => e.textContent.trim()).join(' ');
   out.titleText = Array.from(layout.querySelectorAll('.title:not([data-accent])')).map((e) => e.textContent.trim()).join(' ');
@@ -234,12 +236,14 @@ function decode(png) {
         const slug = name.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
         fs.writeFileSync(path.join(SHOTS, slug + '.png'), png);
 
-        const fields = Object.assign({}, BASE, c.fields, c.expectFields || {});
+        const webhookMode = !!c.webhook && c.fields.data_source !== 'settings' || c.fields.data_source === 'webhook';
+        const fields = Object.assign({}, webhookMode ? (c.webhook || {}) : Object.assign({}, BASE, c.fields), c.expectFields || {});
         const want = expectedLayout(fields, view);
         if (m.layout !== want) errors.push(`layout is "${m.layout}", expected "${want}"`);
 
         if (c.payload === null) {
           if (m.qr) errors.push('drew a QR code without payment details');
+          if (!m.placeholder) errors.push('no "fill in the payment details" message');
         } else if (!m.qr) {
           errors.push('no QR code drawn');
         } else {
