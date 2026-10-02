@@ -7,25 +7,17 @@ custom_fields:
   payment_type: epc
   epc_name: Jane Doe
   epc_iban: BE71 0961 2345 6769
-  epc_bic: GKCCBEBB
-  amount_mode: fixed
   epc_amount: '12.50'
   epc_reference: Coffee fund
   qr_text: https://paypal.me/yourname
   layout: split
   title: Buy me a coffee
   caption: ''
-  show_details: 'false'
   body: "## Coffee fund\n\nEvery cup is **EUR 0.50**. Pay whenever you like, weekly or monthly.\n\n- Open your banking app\n- Scan the code\n- Enjoy your coffee"
   footer: Thank you!
   icon: coffee
   image_url: ''
   visual_position: title
-  qr_size: large
-  text_size: auto
-  text_align: left
-  qr_level: m
-  show_title_bar: 'true'
 
 variables:
   trmnl:

@@ -96,10 +96,7 @@
             <div><label for="epc_name">Beneficiary name</label><input id="epc_name" maxlength="70"></div>
             <div><label for="epc_iban">IBAN</label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
           </div>
-          <div class="row">
-            <div><label for="epc_bic">BIC <small>optional</small></label><input id="epc_bic" spellcheck="false"></div>
-            <div><label for="epc_reference">Reference</label><input id="epc_reference" maxlength="140"></div>
-          </div>
+          <label for="epc_reference">Reference</label><input id="epc_reference" maxlength="140">
           <div class="row">
             <div>
               <label for="amount_mode">Amount</label>
@@ -183,7 +180,7 @@
 const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
-const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_bic', 'epc_reference', 'amount_mode', 'epc_amount',
+const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_reference', 'amount_mode', 'epc_amount',
   'qr_text', 'title', 'caption', 'body', 'footer', 'layout', 'icon', 'image_url'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -228,12 +225,18 @@ function readForm() {
     if (v) p[f] = f === 'epc_iban' ? v.replace(/\s+/g, '').toUpperCase() : v;
   });
   if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
-  if (p.amount_mode === 'open') delete p.epc_amount;
+  if (p.amount_mode === 'open') p.epc_amount = '0';
+  else if (p.amount_mode === 'fixed' && !p.epc_amount) delete p.epc_amount;
+  delete p.amount_mode;
   return p;
 }
 
 function fillForm(p) {
   FIELDS.forEach((f) => { $(f).value = (p && p[f] != null) ? p[f] : ''; });
+  // the template treats an amount of 0 as "payer chooses"
+  const a = p && p.epc_amount;
+  $('amount_mode').value = a == null || a === '' ? '' : Number(String(a).replace(',', '.')) > 0 ? 'fixed' : 'open';
+  if ($('amount_mode').value === 'open') $('epc_amount').value = '';
   refresh();
 }
 
@@ -260,8 +263,8 @@ function amountValue() {
 // ---- preview (mirrors the template's EPC string)
 function epcString(p) {
   if (!p.epc_iban || !p.epc_name) return null;
-  const amount = p.amount_mode !== 'open' && p.epc_amount ? Number(p.epc_amount.replace(',', '.')) : 0;
-  return ['BCD', '002', '1', 'SCT', (p.epc_bic || '').replace(/\s+/g, '').toUpperCase(), p.epc_name, p.epc_iban,
+  const amount = p.epc_amount ? Number(p.epc_amount.replace(',', '.')) : 0;
+  return ['BCD', '002', '1', 'SCT', '', p.epc_name, p.epc_iban,
     amount > 0 ? 'EUR' + amount.toFixed(2) : '', '', '', p.epc_reference || ''].join('\n');
 }
 
@@ -291,7 +294,7 @@ function refresh() {
   }
   let caption = p.caption || '';
   if (!caption && type !== 'text') {
-    if (p.amount_mode === 'open') caption = 'Any amount';
+    if (p.epc_amount === '0') caption = 'Any amount';
     else if (amount) caption = 'EUR ' + amount.toFixed(2);
   }
   $('previewCaption').textContent = caption;

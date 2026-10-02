@@ -13,6 +13,24 @@ polling_body: ''
 id: 494226
 oauth_enabled: 'false'
 oauth_pkce_enabled: 'no'
+oauth_authorize_url: ''
+oauth_token_url: ''
+oauth_scopes: ''
+oauth_scope_separator: ''
+oauth_refresh_url: ''
+oauth_auth_params: ''
+oauth_token_headers: ''
+oauth_token_site: ''
+oauth_token_params: ''
+oauth_token_request_auth_method: ''
+oauth_body_format: ''
+oauth_token_response_metadata: ''
+oauth_authorization_method: ''
+oauth_refresh_params: ''
+oauth_token_field_name: ''
+oauth_expiry_field_name: ''
+oauth_expiry_strategy: ''
+oauth_fixed_expiry_ms: ''
 custom_fields:
 - keyname: about
   name: About This Plugin
@@ -33,15 +51,17 @@ custom_fields:
   - when: epc
     hidden:
     - qr_text
+    required:
+    - epc_name
+    - epc_iban
   - when: text
     hidden:
     - epc_name
     - epc_iban
-    - epc_bic
-    - amount_mode
     - epc_amount
     - epc_reference
-    - show_details
+    required:
+    - qr_text
 - keyname: epc_name
   name: Beneficiary Name
   field_type: string
@@ -53,27 +73,10 @@ custom_fields:
   field_type: string
   placeholder: BE71 0961 2345 6769
   optional: true
-- keyname: epc_bic
-  name: BIC
-  field_type: string
-  description: Optional inside the EEA.
-  placeholder: GKCCBEBB
-  optional: true
-- keyname: amount_mode
-  name: Amount
-  field_type: select
-  description: A fixed amount is filled in for the payer. An open amount lets them type it in their banking app.
-  options:
-  - Fixed amount: fixed
-  - Payer chooses: open
-  default: fixed
-  conditional_validation:
-  - when: open
-    hidden:
-    - epc_amount
 - keyname: epc_amount
   name: Amount (EUR)
   field_type: string
+  description: Leave empty to let the payer choose the amount.
   placeholder: '12.50'
   optional: true
 - keyname: epc_reference
@@ -102,15 +105,10 @@ custom_fields:
   - when: poster
     hidden:
     - body
-    - text_size
-    - text_align
   - when: qr_only
     hidden:
     - body
-    - text_size
-    - text_align
     - footer
-    - show_details
 - keyname: title
   name: Title
   field_type: string
@@ -119,14 +117,8 @@ custom_fields:
 - keyname: caption
   name: QR Caption
   field_type: string
-  description: Short line under the QR code. For SEPA it defaults to the amount, or Any amount when the payer chooses.
+  description: Short line under the QR code. For SEPA it defaults to the amount, or Any amount.
   placeholder: Scan to pay
-  optional: true
-- keyname: show_details
-  name: Show Account Details
-  field_type: boolean
-  description: Print name, IBAN and reference under the QR code, for people who type instead of scan.
-  default: false
   optional: true
 - keyname: body
   name: Text
@@ -181,72 +173,6 @@ custom_fields:
   - Large, above the text: top
   - In the middle of the QR code: qr
   default: title
-  optional: true
-- keyname: qr_size
-  name: QR Size
-  field_type: select
-  options:
-  - Large: large
-  - Medium: medium
-  - Small: small
-  default: large
-  optional: true
-- keyname: text_size
-  name: Text Size
-  field_type: select
-  description: The largest size to use. Text shrinks automatically when it does not fit.
-  options:
-  - Auto: auto
-  - Small: small
-  - Normal: base
-  - Large: large
-  - Extra large: xlarge
-  default: auto
-  optional: true
-- keyname: text_align
-  name: Text Alignment
-  field_type: select
-  options:
-  - Left: left
-  - Center: center
-  default: left
-  optional: true
-- keyname: accent
-  name: Accent Color
-  field_type: select
-  description: Only used on color screens (for example black/white/red/yellow panels). Colors the amount and the icon; the QR code stays black.
-  options:
-  - Red: red
-  - Yellow: yellow
-  - Orange: orange
-  - Green: green
-  - Blue: blue
-  - None: none
-  default: red
-  optional: true
-- keyname: qr_level
-  name: QR Error Correction
-  field_type: select
-  description: Higher survives smudges but makes a denser code. Forced to High when the icon sits in the QR code.
-  options:
-  - Low: l
-  - Medium: m
-  - Quartile: q
-  - High: h
-  default: m
-  optional: true
-- keyname: override_hours
-  name: Webhook Data Expires After (hours)
-  field_type: number
-  description: Ignore data sent through the webhook after this many hours and show these settings again. 0 keeps it until you clear it.
-  default: 0
-  min: 0
-  max: 8760
-  optional: true
-- keyname: show_title_bar
-  name: Show Title Bar
-  field_type: boolean
-  default: true
   optional: true
 name: Payment QR Code
 description:

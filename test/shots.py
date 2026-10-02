@@ -11,8 +11,8 @@ CHROME = os.environ.get('CHROME') or sorted(
                 for d in os.listdir(os.path.expanduser('~/.cache/ms-playwright')) if d.startswith('chromium-'))
     if os.path.exists(p))[-1]
 
-OG = 'screen--og screen--md screen--1bit screen--density-1x'
-X = 'screen--v2 screen--lg screen--4bit screen--density-2x'
+OG = 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-trmnl'
+X = 'screen--v2 screen--lg screen--4bit screen--density-2x screen--fonts-trmnl'
 DEVICES = {  # name: (view, window w, h, slot or None, classes)
     'full': ('full', 800, 480, None, OG),
     'half_h': ('half_horizontal', 800, 480, (800, 240), OG),
@@ -20,26 +20,25 @@ DEVICES = {  # name: (view, window w, h, slot or None, classes)
     'quad': ('quadrant', 800, 480, (400, 240), OG),
     'portrait': ('full', 480, 800, None, OG + ' screen--portrait'),
     'x': ('full', 1872, 1404, None, X),
-    'sm': ('full', 1400, 840, None, 'screen--amazon_kindle_2024 screen--sm screen--density-2x screen--4bit'),
-    'sm_half_v': ('half_vertical', 1400, 840, (400, 480), 'screen--amazon_kindle_2024 screen--sm screen--density-2x screen--4bit'),
-    'bwry': ('full', 800, 480, None, 'screen--og screen--md screen--density-1x screen--color-4bwry'),
+    'sm': ('full', 1400, 840, None, 'screen--amazon_kindle_2024 screen--sm screen--density-2x screen--4bit screen--fonts-trmnl'),
+    'sm_half_v': ('half_vertical', 1400, 840, (400, 480), 'screen--amazon_kindle_2024 screen--sm screen--density-2x screen--4bit screen--fonts-trmnl'),
+    'classic': ('full', 800, 480, None, 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-classic'),
+    'bwry': ('full', 800, 480, None, 'screen--og screen--md screen--density-1x screen--color-4bwry screen--fonts-trmnl'),
 }
 CASES = {  # name: (custom field overrides, devices)
     'split': ({}, list(DEVICES)),
-    'text_large': ({'text_size': 'large'}, ['full', 'x', 'half_h']),
-    'bwry_yellow': ({'accent': 'yellow', 'layout': 'poster', 'visual_position': 'top'}, ['bwry']),
-    'split_reverse_open': ({'layout': 'split_reverse', 'amount_mode': 'open', 'show_details': 'true'}, ['full', 'half_h']),
+    'bwry_poster': ({'layout': 'poster', 'visual_position': 'top'}, ['bwry']),
+    'split_reverse_open': ({'layout': 'split_reverse', 'epc_amount': ''}, ['full', 'half_h']),
     'poster': ({'layout': 'poster', 'visual_position': 'top', 'icon': 'heart', 'title': 'Support the team'}, ['full', 'half_v', 'half_h', 'quad']),
     'qr_only': ({'layout': 'qr_only', 'title': '', 'caption': 'Scan to pay'}, ['full', 'half_v', 'quad']),
     'qr_icon': ({'layout': 'poster', 'visual_position': 'qr', 'icon': 'beer', 'title': 'Friday drinks', 'footer': ''}, ['full', 'half_h', 'quad', 'x']),
     'qr_icon_long': ({'layout': 'split', 'visual_position': 'qr', 'icon': 'heart', 'epc_reference': 'Membership 2026 for the tennis club, family plan, two adults and three kids'}, ['full', 'quad']),
-    'link_long_text': ({'payment_type': 'text', 'qr_text': 'https://paypal.me/yourname/5', 'caption': 'PayPal', 'text_size': 'large',
+    'link_long_text': ({'payment_type': 'text', 'qr_text': 'https://paypal.me/yourname/5', 'caption': 'PayPal', 
                         'body': '# Club membership\n\n' + 'Pay your yearly membership before the end of the month. ' * 6 + '\n\n- One\n- Two\n- Three'},
                        ['full', 'half_v', 'portrait']),
     'webhook': ({'__payment': {'epc_amount': '42', 'epc_reference': 'Pizza night', 'title': 'Pizza night', 'icon': 'food',
                               'body': 'Thanks for joining! **EUR 42** for the pizzas.', 'updated_at': 1700000000}}, ['full']),
-    'webhook_expired': ({'override_hours': '1', '__payment': {'title': 'SHOULD NOT SHOW', 'updated_at': 1700000000}}, ['full']),
-    'webhook_open': ({'__payment': {'amount_mode': 'open', 'caption': 'Pay what you like'}}, ['full']),
+    'webhook_open': ({'__payment': {'epc_amount': '0', 'caption': 'Pay what you like'}}, ['full']),
     'empty': ({'epc_iban': '', 'body': ''}, ['full']),
 }
 
