@@ -199,5 +199,5 @@ custom_fields:
   optional: true
 name: Payment QR Code
 description: Payment QR code with your own text
-recipe_overview: Public recipe overview field
+recipe_overview: Show a scannable payment QR code on your TRMNL. Choose a SEPA bank transfer (EPC QR, works with most European banking apps) with a fixed amount or one the payer picks, or any payment link (PayPal.me, Revolut, Bitcoin...). Add a title, a caption and markdown text, including price lists with dotted leaders. The layout adapts to your text and screen, from full screen to a quarter mashup. Optionally switch to Webhook and let staff update prices, amount or reference from a simple web editor on their phone, no TRMNL account needed.
 refresh_interval: 15
