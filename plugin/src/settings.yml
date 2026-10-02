@@ -36,7 +36,6 @@ custom_fields:
   name: About This Plugin
   field_type: author_bio
   category: finance,personal
-  help_text: TRMNL X Ready
   description: 'Made by ExcuseMi.<br /><br />Source code, issues and examples are on <a href=''https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin''>GitHub</a>. The <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> updates the screen through the webhook.<br /><br />Learn more: <a href=''https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin#readme''>how it works</a>.'
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
 - keyname: data_source
