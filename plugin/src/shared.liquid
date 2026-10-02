@@ -106,8 +106,9 @@
 {%- endcomment -%}
 {%- assign body = src.body | default: "" | strip -%}
 {%- comment -%}
-  Lines are split with newline_to_br, not with a newline typed in this file: TRMNL stores the markup
-  with CRLF line endings, so a newline made here is "\r\n" and never matched the "\n" in the text.
+  Lines are split with newline_to_br, not with a newline typed in this file: in TRMNL's web markup
+  editor that newline was "\r\n" (the editor preview's QR decoded with CR LF), which never matched
+  the "\n" in the text. A push from trmnlp rendered it as "\n"; newline_to_br works either way.
 {%- endcomment -%}
 {%- if body contains " | " -%}
   {%- assign lines = body | newline_to_br | split: "<br />" -%}
@@ -228,14 +229,14 @@
       The code is drawn as an <img>: TRMNL's dark mode inverts the whole screen except images, and
       an inverted (white on black) code is unreadable for many banking apps. The quiet zone, the white
       margin scanners need, is drawn inside the image for the same reason.
-      TRMNL's server can return the svg at a fixed pixel size (width/height, no viewBox) where trmnlp
-      returns a scalable one, so normalize to a viewBox first.
+      TRMNL's server has its own qr_code: its svg carries style="max-width:100%;height:auto", which
+      trmnlp's does not, and without "responsive" it drew a fixed size (275 px for 25 modules x 11 px).
     {%- endcomment -%}
     {%- capture qr_svg -%}{{ payload | qr_code: 11, level, "responsive" }}{%- endcapture -%}
     {%- comment -%}
-      Rebuild the svg's opening tag: drop any width/height the filter set (TRMNL's server sets them,
-      trmnlp does not) and keep or add the viewBox. Inside an <img> the svg is strict XML, so a
-      second width attribute would break the whole image.
+      Rebuild the svg's opening tag: drop any width/height the filter set and keep or add the viewBox.
+      Inside an <img> the svg is strict XML, where a duplicate attribute breaks the whole image; the
+      image did break on the server until width/height were dropped (likely set there, not yet seen).
     {%- endcomment -%}
     {%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}
     {%- assign qr_open = qr_svg | split: '>' | first -%}
@@ -263,7 +264,10 @@
     {%- endif -%}
     {%- assign qr_svg = qr_open | strip | append: qr_rest -%}
     {%- capture qr_img -%}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="crispEdges"><rect width="100" height="100" fill="#fff"/>{{ qr_svg | replace_first: '<svg ', '<svg x="8" y="8" width="84" height="84" ' }}</svg>{%- endcapture -%}
-    <img class="w--full h--full" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}"
+    {%- comment -%} TEMPORARY: the filter's raw output, to compare TRMNL's server with trmnlp. Remove after reading. {%- endcomment -%}
+    {%- capture qr_raw_default -%}{{ payload | qr_code: 11, level }}{%- endcapture -%}
+    {%- capture qr_raw -%}{{ payload | qr_code: 11, level, "responsive" }}{%- endcapture -%}
+    <img class="w--full h--full" data-qr-raw="{{ qr_raw | base64_encode }}" data-qr-raw-default="{{ qr_raw_default | base64_encode }}" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}"
       onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
     {%- comment -%} if the image cannot load, the same code inline: better inverted in dark mode than missing {%- endcomment -%}
     <div class="hidden w--full h--full bg--white p--2" data-qr-fallback>{{ qr_svg | replace_first: '<svg ', '<svg width="100%" height="100%" ' }}</div>

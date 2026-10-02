@@ -221,7 +221,10 @@ for (const flag of [false, 'false', 'no']) {
 }
 
 // ---------------------------------------------------------------- what TRMNL's server does differently
-// trmnlp-test runs trmnlp's code; these patch a copy of the plugin to behave like the server did.
+// trmnlp-test runs trmnlp's code; these patch a copy of the plugin to behave the way TRMNL's server or
+// web editor did. Seen: the server's qr_code differs (an extra style attribute; without "responsive"
+// a fixed 275 px code, 25 modules x 11 px) and the editor preview used CR LF. Likely, not yet seen:
+// width/height on the server's svg (the image broke until they were dropped).
 function patchedPlugin(name, patch) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `qr-${name}-`));
   fs.cpSync(path.join(__dirname, '../../plugin'), dir, { recursive: true });
@@ -233,12 +236,12 @@ function patchedPlugin(name, patch) {
   return dir;
 }
 const SERVER = {
-  // the server's qr_code svg had a fixed size, drawn small in the corner of its box
+  // without "responsive" the server drew a fixed-size code, small in the corner of its box
   'fixed-size svg': (s) => s.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'),
-  // ... and carried width/height, which broke the image once it was strict XML
+  // likely: width/height on the server's svg, which break the image once it is strict XML
   'svg with viewBox and size': (s) => s.replace("{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}",
     "{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' | replace_first: '<svg ', '<svg width=\"300\" height=\"300\" ' -%}"),
-  // the markup came back with CRLF line endings, so a newline made in the template never split webhook text
+  // the web editor preview made the template's newline CR LF, so it never split webhook text
   'CRLF line endings': (s) => s.replace(/\r?\n/g, '\r\n'),
 };
 for (const [name, patch] of Object.entries(SERVER)) {

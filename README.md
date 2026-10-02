@@ -56,7 +56,7 @@ gem install trmnlp-test     # once; needs Docker
 trmnlp-test [-g filter]     # the tests in test/trmnl/, report in test/trmnl-report/
 ```
 
-The tests use [trmnlp-test](https://github.com/ExcuseMi/trmnlp-test): about 110 renders on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. "Server variant" tests patch a copy of the template the way TRMNL's server differs from trmnlp (QR svg size, CRLF line endings). The flow is drawn in [test/testing.puml](test/testing.puml):
+The tests use [trmnlp-test](https://github.com/ExcuseMi/trmnlp-test): about 110 renders on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. "Server variant" tests patch a copy of the template the way TRMNL differed from trmnlp: its server's `qr_code` svg (an extra style attribute, a fixed size by default, likely width/height) and CR LF newlines in the web editor's preview. The flow is drawn in [test/testing.puml](test/testing.puml):
 
 ![How the plugin is tested](test/testing.png)
 
