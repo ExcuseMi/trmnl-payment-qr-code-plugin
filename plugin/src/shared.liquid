@@ -63,6 +63,7 @@
   {%- endfor -%}
 {%- endif -%}
 {%- assign footer = wh.footer | default: cf.footer | default: "" | strip -%}
+{%- assign title_bar = wh.title_bar | default: cf.title_bar | default: trmnl.plugin_settings.instance_name | strip -%}
 {%- assign icon = wh.icon | default: cf.icon | default: "none" -%}
 {%- assign image_url = wh.image_url | default: cf.image_url | default: "" | strip -%}
 {%- assign has_visual = false -%}
@@ -217,13 +218,14 @@
 
 <div class="title_bar">
   <svg class="image" width="24" height="24" viewBox="0 0 64 64"><rect x="4" y="4" width="22" height="22" rx="4"/><rect x="10" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="38" y="4" width="22" height="22" rx="4"/><rect x="44" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="4" y="38" width="22" height="22" rx="4"/><rect x="10" y="44" width="10" height="10" rx="2" fill="#fff"/><circle cx="49" cy="49" r="13"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-  <span class="title">{{ trmnl.plugin_settings.instance_name }}</span>
+  <span class="title">{{ title_bar }}</span>
 </div>
 <script>
 (function () {
   var view = document.currentScript.closest('.view') || document;
   var screen = document.querySelector('.screen');
-  if (screen && screen.className.indexOf('screen--color-') >= 0) {
+  var color = !!screen && screen.className.indexOf('screen--color-') >= 0;
+  if (color) {
     view.querySelectorAll('[data-accent]').forEach(function (el) {
       if (el.dataset.accent) el.className += ' ' + el.dataset.accent;
     });
@@ -232,6 +234,29 @@
   // fit the markdown into its box: step the text size down, then drop trailing blocks,
   // then clamp the last block to the lines that are left
   var SIZES = ['content--xlarge', 'content--large', 'content--base', 'content--small'];
+  // list marks: the framework resets list styles, so draw a bullet (or the number) in front of each item
+  function markLists(content) {
+    content.querySelectorAll('li').forEach(function (li) {
+      var ordered = li.parentElement && li.parentElement.tagName === 'OL';
+      var mark = document.createElement('span');
+      mark.setAttribute('data-qr-mark', '');
+      if (ordered) {
+        mark.textContent = (Array.prototype.indexOf.call(li.parentElement.children, li) + 1) + '.';
+        mark.style.cssText = 'flex:none;min-width:1.4em';
+      } else {
+        mark.style.cssText = 'flex:none;width:.4em;height:.4em;border-radius:50%;background:currentColor;margin-top:calc((1lh - .4em) / 2)';
+      }
+      if (color) mark.className = 'text--red';
+      var text = document.createElement('span');
+      text.style.cssText = 'flex:1 1 0;min-width:0';
+      while (li.firstChild) text.appendChild(li.firstChild);
+      li.appendChild(mark);
+      li.appendChild(text);
+      li.style.cssText = 'display:flex;align-items:flex-start;gap:.5em;list-style:none';
+    });
+    content.querySelectorAll('ul, ol').forEach(function (list) { list.style.paddingLeft = '0'; });
+  }
+
   function fit() {
     view.querySelectorAll('[data-qr-body]').forEach(function (box) {
       var content = box.firstElementChild;
@@ -245,7 +270,13 @@
       content.querySelectorAll('[data-qr-row]').forEach(function (row) {
         var block = row.closest('ul, ol, p');
         if (block) block.style.alignSelf = 'stretch';
+        // a dotted leader from the item to its price, sitting on the text baseline
+        var leader = document.createElement('span');
+        leader.style.cssText = 'flex:1 1 0;min-width:1em;align-self:stretch;margin-bottom:.3em;border-bottom:2px dotted currentColor';
+        row.insertBefore(leader, row.lastElementChild);
+        row.style.alignItems = 'flex-end';
       });
+      markLists(content);
       var over = function () { return content.scrollHeight > box.clientHeight + 1; };
       var i = SIZES.findIndex(function (c) { return content.classList.contains(c); });
       while (over() && i >= 0 && i < SIZES.length - 1) {

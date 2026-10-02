@@ -93,6 +93,9 @@ const CASES = [
   { name: 'no caption, short view', fields: { payment_type: 'text', qr_text: 'https://paypal.me/yourname' }, payload: 'https://paypal.me/yourname', matrix: [['og', [1, 2, 4]], ['x', [2]]] },
   { name: 'webhook open amount', fields: {}, webhook: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
   { name: 'webhook cleared', fields: {}, webhook: { updated_at: 1700000000 }, payload: EPC_BASE, matrix: [['og', [1]]] },
+  { name: 'title bar text', fields: { title_bar: 'Pay at the counter' }, payload: EPC_BASE, titleBar: 'Pay at the counter', matrix: [['og', [1, 4]]] },
+  { name: 'title bar from webhook', fields: { title_bar: 'From settings' }, webhook: { title_bar: 'From webhook' }, payload: EPC_BASE, titleBar: 'From webhook', matrix: [['og', [1]]] },
+  { name: 'title bar defaults to plugin name', fields: {}, payload: EPC_BASE, titleBar: 'Payment QR Code', matrix: [['og', [1]]] },
   { name: 'webhook switches to link', fields: {}, webhook: { payment_type: 'text', qr_text: 'https://revolut.me/jane' }, payload: 'https://revolut.me/jane', matrix: [['og', [1]]] },
 ];
 
@@ -151,7 +154,7 @@ function measure() {
   const svg = document.querySelector('svg.qr-code');
   const out = { layout: layout && layout.dataset.qrLayout, view: r(view), titleBar: null, qr: null, texts: [], bodyOverflow: false };
   const tb = view.querySelector('.title_bar');
-  if (tb) out.titleBar = r(tb);
+  if (tb) { out.titleBar = r(tb); out.titleBarText = tb.textContent.trim(); }
   if (svg) {
     // the code is drawn square inside the svg box (preserveAspectRatio meet)
     const box = r(svg);
@@ -175,6 +178,8 @@ function measure() {
     const price = row.lastElementChild.getBoundingClientRect();
     return { text: row.textContent.trim(), gapRight: box.right - price.right, apart: price.left - name.right };
   });
+  out.items = Array.from(layout.querySelectorAll('[data-qr-body] li')).filter((li) => li.getBoundingClientRect().height > 0)
+    .map((li) => ({ marked: !!li.querySelector('[data-qr-mark]') }));
   out.caption = Array.from(layout.querySelectorAll('[data-accent^="bg--"]')).map((e) => e.textContent.trim());
   out.bodyText = Array.from(layout.querySelectorAll('[data-qr-body]')).map((e) => e.textContent.trim()).join(' ');
   out.titleText = Array.from(layout.querySelectorAll('.title:not([data-accent])')).map((e) => e.textContent.trim()).join(' ');
@@ -251,6 +256,9 @@ function decode(png) {
           if (m.titleBar && t.b > m.titleBar.y + 1) errors.push(`"${t.text}" runs under the title bar`);
         }
         if (m.bodyOverflow) errors.push('text overflows its box');
+        if (c.titleBar && m.titleBarText !== c.titleBar) errors.push(`title bar says "${m.titleBarText}", expected "${c.titleBar}"`);
+        // lists get a mark (bullet or number) in front of every visible item
+        if (m.items.some((i) => !i.marked)) errors.push('a list item has no mark');
         if (c.priceRows && view !== 4) {
           if (!m.rows.length) errors.push('no price rows drawn');
           for (const row of m.rows) {

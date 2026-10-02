@@ -124,6 +124,12 @@ custom_fields:
   description: One short line at the bottom, like a thank you.
   placeholder: Thank you!
   optional: true
+- keyname: title_bar
+  name: Title Bar Text
+  field_type: string
+  description: The text in the bar at the bottom. Leave empty to use the plugin name.
+  placeholder: Payment QR Code
+  optional: true
 - keyname: icon
   name: Icon
   field_type: select

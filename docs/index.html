@@ -175,7 +175,10 @@
           <textarea id="body" placeholder="## Coffee fund&#10;&#10;Every cup is **EUR 0.50**.&#10;&#10;- Open your banking app&#10;- Scan the code"></textarea>
           <div class="md-preview hidden" id="mdPreview"></div>
           <div class="hint">Leave a blank line between paragraphs. Long text shrinks to fit on the device.</div>
-          <label for="footer">Footer</label><input id="footer">
+          <div class="row">
+          <div><label for="footer">Footer</label><input id="footer"></div>
+          <div><label for="title_bar">Title bar</label><input id="title_bar" placeholder="Defaults to the plugin name"></div>
+        </div>
         </div>
       </section>
 
@@ -243,7 +246,7 @@ const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
 const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_reference', 'amount_mode', 'epc_amount',
-  'qr_text', 'title', 'caption', 'body', 'footer', 'icon', 'image_url'];
+  'qr_text', 'title', 'caption', 'body', 'footer', 'title_bar', 'icon', 'image_url'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const $ = (id) => document.getElementById(id);

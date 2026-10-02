@@ -7,7 +7,8 @@ Show a scannable payment QR code with your own text on a TRMNL.
 - **SEPA transfer (EPC QR)**, scanned by most European banking apps, with a fixed amount or one the payer chooses
 - **Any link or text**: PayPal.me, Revolut, Payconiq, Stripe, Bitcoin, ...
 - **No layout settings**: with text the QR sits beside it (stacked on portrait screens and tall mashup slots); without text title, QR and footer are centered
-- Markdown text that shrinks to fit, an icon or your own image next to the title
+- Markdown text that shrinks to fit, with bullets and price rows: `- Espresso | €2.40` puts the price on the right with a dotted leader
+- An icon or your own image next to the title, and your own title bar text
 - All four view sizes, OG, TRMNL X and `sm` devices; red accents on color panels (BWRY etc.)
 - Few settings: text size, QR size and error correction are chosen automatically
 
@@ -24,6 +25,10 @@ The plugin settings are the defaults. Data sent to the plugin's webhook override
 
 Anyone with the webhook URL can change the QR code, so keep the URL (and the downloaded file) private.
 
+Example: [a coffee shop price list](assets/examples/coffee-shop.json) with a [made-up logo](assets/examples/northbean-logo.png):
+
+![coffee shop](assets/screens/coffee-shop.png)
+
 Or from a script, using the same keys as the settings:
 
 ```sh
@@ -31,7 +36,7 @@ curl "https://trmnl.com/api/custom_plugins/<uuid>" -H "Content-Type: application
   -d '{"merge_variables": {"payment": {"epc_amount": "42.00", "epc_reference": "Pizza night", "updated_at": 1790000000}}}'
 ```
 
-Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `icon`, `image_url`. An empty value falls back to the setting. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `icon`, `image_url`. An empty value falls back to the setting. TRMNL allows 12 webhook updates per hour and 2 KB of data.
 
 ## Development
 

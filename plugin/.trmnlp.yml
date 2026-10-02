@@ -14,6 +14,7 @@ custom_fields:
   caption: ''
   body: "## Coffee fund\n\nEvery cup is **EUR 0.50**. Pay whenever you like, weekly or monthly.\n\n- Open your banking app\n- Scan the code\n- Enjoy your coffee"
   footer: Thank you!
+  title_bar: ''
   icon: coffee
   image_url: ''
 
