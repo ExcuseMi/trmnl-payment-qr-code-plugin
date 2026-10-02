@@ -9,7 +9,7 @@ Show a scannable payment QR code with your own text on a TRMNL.
 - **Layouts**: QR left with text right (or reversed), poster (title, QR, footer), QR only. Side-by-side layouts stack on portrait screens and half vertical mashups.
 - Markdown text that shrinks to fit, an icon or your own image (next to the title, above the text, or in the middle of the QR code)
 - All four view sizes, OG, TRMNL X and `sm` devices; red accents on color panels (BWRY etc.)
-- Few settings: text size, QR size and error correction are chosen automatically
+- Few settings: text size, QR size and error correction are chosen automatically, and without text the layout centers the QR
 
 | | |
 |---|---|
@@ -20,7 +20,7 @@ Show a scannable payment QR code with your own text on a TRMNL.
 
 The plugin settings are the defaults. Data sent to the plugin's webhook overrides them field by field, for example a new amount and reference per payment. Clearing it shows the settings again.
 
-**Web editor:** <https://excusemi.github.io/trmnl-payment-qr-code-plugin/>. Paste your webhook URL, change fields, send or clear. "Download my editor" saves a single HTML file with your webhook URL built in.
+**Web editor:** <https://excusemi.github.io/trmnl-payment-qr-code-plugin/>. Paste your webhook URL, change fields with a live device preview (rendered from this plugin's own template), send or clear. "Download my editor" saves a single HTML file with your webhook URL built in.
 
 Anyone with the webhook URL can change the QR code, so keep the URL (and the downloaded file) private.
 

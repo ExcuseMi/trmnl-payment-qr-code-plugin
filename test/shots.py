@@ -39,6 +39,8 @@ CASES = {  # name: (custom field overrides, devices)
     'webhook': ({'__payment': {'epc_amount': '42', 'epc_reference': 'Pizza night', 'title': 'Pizza night', 'icon': 'food',
                               'body': 'Thanks for joining! **EUR 42** for the pizzas.', 'updated_at': 1700000000}}, ['full']),
     'webhook_open': ({'__payment': {'epc_amount': '0', 'caption': 'Pay what you like'}}, ['full']),
+    'no_text': ({'body': ''}, ['full', 'half_h', 'half_v', 'quad', 'portrait']),
+    'no_text_at_all': ({'body': '', 'title': '', 'footer': '', 'icon': 'none'}, ['full', 'half_h']),
     'empty': ({'epc_iban': '', 'body': ''}, ['full']),
 }
 

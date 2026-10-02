@@ -94,7 +94,7 @@ custom_fields:
 - keyname: layout
   name: Layout
   field_type: select
-  description: Side-by-side layouts stack vertically on portrait screens and in half vertical mashups.
+  description: Side-by-side layouts stack vertically on portrait screens and in half vertical mashups, and become the poster layout when there is no text.
   options:
   - QR left, text right: split
   - Text left, QR right: split_reverse

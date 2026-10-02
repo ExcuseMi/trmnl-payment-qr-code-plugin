@@ -6,71 +6,110 @@
 <title>Payment QR Code editor</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='38' y='4' width='22' height='22' rx='4' fill='%23111'/%3E%3Crect x='4' y='38' width='22' height='22' rx='4' fill='%23111'/%3E%3Ccircle cx='49' cy='49' r='12' fill='%23f8654b'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/liquidjs/10.29.0/liquid.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/18.0.14/lib/marked.umd.min.js"></script>
 <style>
   :root {
-    --bg: #f6f5f3; --card: #fff; --text: #1d1d1f; --muted: #6b6b70; --line: #dedcd8;
-    --accent: #f8654b; --accent-text: #fff; --ok: #1f7a3d; --err: #b3261e; --warn: #8a5a00;
+    --bg: #f3f1ee; --card: #fff; --sunk: #f8f7f5; --text: #1d1d1f; --muted: #6b6b70; --line: #e3e0db;
+    --accent: #f8654b; --accent-soft: #fde7e2; --accent-text: #fff; --ok: #1f7a3d; --err: #b3261e; --warn: #8a5a00;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #161617; --card: #222224; --text: #f2f2f3; --muted: #a1a1a6; --line: #3a3a3d;
-      --ok: #6fd08f; --err: #ff8a80; --warn: #ffcc66; }
+    :root { --bg: #141415; --card: #1f1f21; --sunk: #18181a; --text: #f2f2f3; --muted: #a1a1a6; --line: #333336;
+      --accent-soft: #3a2420; --ok: #6fd08f; --err: #ff8a80; --warn: #ffcc66; --shadow: none; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-  header svg { width: 40px; height: 40px; flex: none; }
-  h1 { font-size: 22px; margin: 0; }
-  header p { margin: 0; color: var(--muted); font-size: 14px; }
-  .grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .side { order: -1; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .card h2 { font-size: 15px; margin: 0 0 4px; }
-  .card > p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  a { color: var(--accent); }
+  .hidden { display: none !important; }
+
+  .topbar { background: var(--card); border-bottom: 1px solid var(--line); }
+  .topbar-inner { max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; align-items: center; gap: 14px; }
+  .topbar svg { width: 40px; height: 40px; flex: none; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  .topbar p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  main { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } .side { order: -1; position: static !important; } }
+  .side { position: sticky; top: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden; }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--sunk); }
+  .step { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-text);
+    font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; }
+  .card-head h2 { font-size: 15px; margin: 0; }
+  .card-head .sub { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .card-body { padding: 4px 18px 18px; }
+
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
-  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
   label small { font-weight: 400; color: var(--muted); }
-  input, select, textarea { width: 100%; font: inherit; color: inherit; background: var(--bg);
-    border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
-  textarea { min-height: 130px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
-  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  input, select, textarea { width: 100%; font: inherit; color: inherit; background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; }
+  textarea { min-height: 150px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; display: block; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .hint.bad { color: var(--err); }
-  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 14px; cursor: pointer;
+
+  .seg { display: inline-flex; background: var(--sunk); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 7px; font-weight: 600; font-size: 13px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+  .md-head { display: flex; align-items: end; justify-content: space-between; gap: 8px; }
+  .md-head label { margin-bottom: 5px; }
+  .md-head .seg { margin-bottom: 5px; }
+  .md-preview { min-height: 150px; border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; background: var(--sunk); overflow: auto; }
+  .md-preview :first-child { margin-top: 0; } .md-preview :last-child { margin-bottom: 0; }
+  .md-preview h1, .md-preview h2, .md-preview h3 { font-size: 17px; margin: 10px 0 4px; }
+  .md-preview p, .md-preview ul, .md-preview ol { margin: 6px 0; }
+
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  button { font: inherit; font-weight: 600; border-radius: 9px; padding: 9px 14px; cursor: pointer;
     border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  button:hover:not(:disabled) { border-color: var(--muted); }
   button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.primary:hover:not(:disabled) { filter: brightness(.95); border-color: var(--accent); }
   button:disabled { opacity: .5; cursor: not-allowed; }
-  #status { margin-top: 12px; font-size: 14px; min-height: 1.5em; }
+
+  .actions { position: sticky; bottom: 0; z-index: 2; background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 -2px 16px rgba(0,0,0,.06); padding: 12px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .actions .buttons { margin: 0; }
+  #status { font-size: 14px; flex: 1 1 200px; }
   #status.ok { color: var(--ok); } #status.err { color: var(--err); } #status.warn { color: var(--warn); }
-  .preview { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .preview .qr { background: #fff; padding: 10px; border-radius: 8px; width: 100%; max-width: 260px; aspect-ratio: 1; display: grid; place-items: center; }
-  .preview .qr svg, .preview .qr img { width: 100%; height: auto; display: block; }
-  .preview .caption { font-weight: 700; }
-  pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--bg); border-radius: 8px; padding: 8px; margin: 0; max-height: 160px; overflow: auto; }
   .meter { font-size: 12px; color: var(--muted); }
-  .hidden { display: none !important; }
-  a { color: var(--accent); }
+
+  .device-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; padding: 14px 18px 0; }
+  .stage { margin: 14px 18px; border-radius: 12px; background: repeating-conic-gradient(var(--sunk) 0 25%, var(--bg) 0 50%) 0 0 / 16px 16px;
+    border: 1px solid var(--line); padding: 14px; display: grid; place-items: center; }
+  .bezel { background: #2b2b2d; border-radius: 12px; padding: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.18); max-width: 100%; }
+  .screen-box { position: relative; overflow: hidden; background: #fff; border-radius: 3px; }
+  .screen-box iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff; }
+  .render-note { font-size: 12px; color: var(--muted); padding: 0 18px 16px; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--sunk); border: 1px solid var(--line); border-radius: 9px; padding: 10px; margin: 14px 0 0; max-height: 180px; overflow: auto; }
+  details summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 14px 18px; }
+  details .card-body { padding-top: 0; }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="10" width="10" height="10" rx="2" fill="var(--bg)"/><rect x="38" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="44" y="10" width="10" height="10" rx="2" fill="var(--bg)"/><rect x="4" y="38" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="44" width="10" height="10" rx="2" fill="var(--bg)"/><circle cx="49" cy="49" r="13" fill="#f8654b"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+<div class="topbar">
+  <div class="topbar-inner">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="10" width="10" height="10" rx="2" fill="var(--card)"/><rect x="38" y="4" width="22" height="22" rx="4" fill="currentColor"/><rect x="44" y="10" width="10" height="10" rx="2" fill="var(--card)"/><rect x="4" y="38" width="22" height="22" rx="4" fill="currentColor"/><rect x="10" y="44" width="10" height="10" rx="2" fill="var(--card)"/><circle cx="49" cy="49" r="13" fill="#f8654b"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
     <div>
       <h1>Payment QR Code</h1>
-      <p>Change what your TRMNL shows without opening the plugin settings. Empty fields use the plugin settings.</p>
+      <p>Change what your TRMNL shows without opening the plugin settings.</p>
     </div>
-  </header>
+  </div>
+</div>
 
-  <div class="grid">
-    <div>
-      <section class="card" id="connectCard">
-        <h2>Your plugin</h2>
-        <p>Paste the <strong>Webhook URL</strong> from the plugin settings. It stays in this browser only.</p>
-        <label for="webhook">Webhook URL or plugin UUID</label>
+<main>
+  <div>
+    <section class="card" id="connectCard">
+      <div class="card-head"><span class="step">1</span><h2>Connect your plugin</h2></div>
+      <div class="card-body">
+        <label for="webhook">Webhook URL <small>from the plugin settings, kept in this browser only</small></label>
         <input id="webhook" placeholder="https://trmnl.com/api/custom_plugins/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
         <div class="hint" id="webhookHint">Anyone with this URL can change your QR code, so keep it private.</div>
         <div class="buttons">
@@ -78,101 +117,145 @@
           <button id="downloadBtn">Download my editor</button>
           <button id="forgetBtn">Forget URL</button>
         </div>
-        <div class="hint">The downloaded editor is one HTML file with your webhook URL built in. Keep it on your phone or desktop.</div>
+        <div class="hint">"Download my editor" saves one HTML file with your webhook URL built in, for your phone or desktop.</div>
+      </div>
+    </section>
+
+    <form id="form" autocomplete="off">
+      <section class="card">
+        <div class="card-head"><span class="step">2</span><h2>Payment</h2><span class="sub">empty = plugin settings</span></div>
+        <div class="card-body">
+          <label for="payment_type">Payment type</label>
+          <select id="payment_type">
+            <option value="">Use plugin settings</option>
+            <option value="epc">SEPA transfer (EPC QR)</option>
+            <option value="text">Payment link or text</option>
+          </select>
+
+          <div id="epcFields">
+            <div class="row">
+              <div><label for="epc_name">Beneficiary name</label><input id="epc_name" maxlength="70"></div>
+              <div><label for="epc_iban">IBAN</label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
+            </div>
+            <div class="row">
+              <div>
+                <label for="amount_mode">Amount</label>
+                <select id="amount_mode">
+                  <option value="">Use plugin settings</option>
+                  <option value="fixed">Fixed amount</option>
+                  <option value="open">Payer chooses</option>
+                </select>
+              </div>
+              <div id="amountWrap"><label for="epc_amount">Amount (EUR)</label><input id="epc_amount" inputmode="decimal" placeholder="12.50"><div class="hint" id="amountHint"></div></div>
+            </div>
+            <label for="epc_reference">Reference</label><input id="epc_reference" maxlength="140">
+          </div>
+
+          <div id="textFields">
+            <label for="qr_text">Payment link or text</label>
+            <input id="qr_text" placeholder="https://paypal.me/yourname/12.50" spellcheck="false">
+          </div>
+        </div>
       </section>
 
-      <form class="card" id="form" autocomplete="off">
-        <h2>Payment</h2>
-        <p>Overrides for this payment. Leave empty to keep the plugin settings.</p>
-        <label for="payment_type">Payment type</label>
-        <select id="payment_type">
-          <option value="">Use plugin settings</option>
-          <option value="epc">SEPA transfer (EPC QR)</option>
-          <option value="text">Payment link or text</option>
-        </select>
-
-        <div id="epcFields">
+      <section class="card">
+        <div class="card-head"><span class="step">3</span><h2>Text</h2></div>
+        <div class="card-body">
           <div class="row">
-            <div><label for="epc_name">Beneficiary name</label><input id="epc_name" maxlength="70"></div>
-            <div><label for="epc_iban">IBAN</label><input id="epc_iban" spellcheck="false"><div class="hint" id="ibanHint"></div></div>
+            <div><label for="title">Title</label><input id="title"></div>
+            <div><label for="caption">QR caption</label><input id="caption" placeholder="Defaults to the amount"></div>
           </div>
-          <label for="epc_reference">Reference</label><input id="epc_reference" maxlength="140">
+          <div class="md-head">
+            <label for="body">Text <small>markdown</small></label>
+            <div class="seg" role="group" aria-label="Text view">
+              <button type="button" data-md="write" aria-pressed="true">Write</button>
+              <button type="button" data-md="preview" aria-pressed="false">Preview</button>
+            </div>
+          </div>
+          <textarea id="body" placeholder="## Coffee fund&#10;&#10;Every cup is **EUR 0.50**.&#10;&#10;- Open your banking app&#10;- Scan the code"></textarea>
+          <div class="md-preview hidden" id="mdPreview"></div>
+          <div class="hint">Leave a blank line between paragraphs. Long text shrinks to fit on the device.</div>
+          <label for="footer">Footer</label><input id="footer">
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><span class="step">4</span><h2>Look</h2></div>
+        <div class="card-body">
           <div class="row">
             <div>
-              <label for="amount_mode">Amount</label>
-              <select id="amount_mode">
+              <label for="layout">Layout</label>
+              <select id="layout">
                 <option value="">Use plugin settings</option>
-                <option value="fixed">Fixed amount</option>
-                <option value="open">Payer chooses</option>
+                <option value="split">QR left, text right</option>
+                <option value="split_reverse">Text left, QR right</option>
+                <option value="poster">Poster: title, QR, footer</option>
+                <option value="qr_only">QR code only</option>
               </select>
             </div>
-            <div id="amountWrap"><label for="epc_amount">Amount (EUR)</label><input id="epc_amount" inputmode="decimal" placeholder="12.50"><div class="hint" id="amountHint"></div></div>
+            <div>
+              <label for="icon">Icon</label>
+              <select id="icon">
+                <option value="">Use plugin settings</option>
+                <option value="none">None</option><option value="heart">Heart</option><option value="coffee">Coffee</option>
+                <option value="beer">Beer</option><option value="food">Food</option><option value="gift">Gift</option>
+                <option value="cart">Shopping cart</option><option value="home">Home</option><option value="users">Group</option>
+                <option value="wallet">Wallet</option><option value="euro">Euro</option><option value="dollar">Dollar</option>
+                <option value="phone">Phone</option><option value="star">Star</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div><label for="image_url">Image URL <small>replaces the icon</small></label><input id="image_url" placeholder="https://example.com/logo.png" spellcheck="false"></div>
+            <div>
+              <label for="visual_position">Icon / image position</label>
+              <select id="visual_position">
+                <option value="">Use plugin settings</option>
+                <option value="title">Next to the title</option>
+                <option value="top">Large, above the text</option>
+                <option value="qr">In the middle of the QR code</option>
+              </select>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div id="textFields">
-          <label for="qr_text">Payment link or text</label>
-          <input id="qr_text" placeholder="https://paypal.me/yourname/12.50" spellcheck="false">
-        </div>
-
-        <h2 style="margin-top:20px">Text</h2>
-        <div class="row">
-          <div><label for="title">Title</label><input id="title"></div>
-          <div><label for="caption">QR caption</label><input id="caption" placeholder="Defaults to the amount"></div>
-        </div>
-        <label for="body">Text <small>markdown, blank line between paragraphs</small></label>
-        <textarea id="body"></textarea>
-        <label for="footer">Footer</label><input id="footer">
-
-        <h2 style="margin-top:20px">Look</h2>
-        <div class="row">
-          <div>
-            <label for="layout">Layout</label>
-            <select id="layout">
-              <option value="">Use plugin settings</option>
-              <option value="split">QR left, text right</option>
-              <option value="split_reverse">Text left, QR right</option>
-              <option value="poster">Poster: title, QR, footer</option>
-              <option value="qr_only">QR code only</option>
-            </select>
-          </div>
-          <div>
-            <label for="icon">Icon</label>
-            <select id="icon">
-              <option value="">Use plugin settings</option>
-              <option value="none">None</option><option value="heart">Heart</option><option value="coffee">Coffee</option>
-              <option value="beer">Beer</option><option value="food">Food</option><option value="gift">Gift</option>
-              <option value="cart">Shopping cart</option><option value="home">Home</option><option value="users">Group</option>
-              <option value="wallet">Wallet</option><option value="euro">Euro</option><option value="dollar">Dollar</option>
-              <option value="phone">Phone</option><option value="star">Star</option>
-            </select>
-          </div>
-        </div>
-        <label for="image_url">Image URL</label><input id="image_url" placeholder="https://example.com/logo.png" spellcheck="false">
-
+      <div class="actions">
         <div class="buttons">
           <button type="submit" class="primary" id="sendBtn">Send to TRMNL</button>
-          <button type="button" id="clearBtn">Clear, use plugin settings</button>
-          <button type="button" id="resetBtn">Empty the form</button>
+          <button type="button" id="clearBtn">Clear</button>
+          <button type="button" id="resetBtn">Empty form</button>
         </div>
         <div id="status" role="status"></div>
         <div class="meter" id="meter"></div>
-      </form>
-    </div>
-
-    <aside class="side">
-      <section class="card preview">
-        <h2>QR preview</h2>
-        <div class="qr" id="qr"></div>
-        <div class="caption" id="previewCaption"></div>
-        <div class="hint" id="previewHint">Only overrides are previewed. Fields left empty come from the plugin settings on the device.</div>
-      </section>
-      <section class="card">
-        <h2>Sent data</h2>
-        <pre id="current">Nothing loaded yet.</pre>
-      </section>
-    </aside>
+      </div>
+    </form>
   </div>
+
+  <aside class="side">
+    <section class="card">
+      <div class="card-head"><h2>Preview</h2><span class="sub" id="renderState">loading the template...</span></div>
+      <div class="device-controls">
+        <div class="seg" role="group" aria-label="Device" id="deviceSeg">
+          <button type="button" data-device="og" aria-pressed="true">TRMNL OG</button>
+          <button type="button" data-device="x" aria-pressed="false">TRMNL X</button>
+          <button type="button" data-device="bwry" aria-pressed="false">Color</button>
+        </div>
+        <div class="seg" role="group" aria-label="View" id="viewSeg">
+          <button type="button" data-view="1" aria-pressed="true">Full</button>
+          <button type="button" data-view="2" aria-pressed="false">Half wide</button>
+          <button type="button" data-view="3" aria-pressed="false">Half tall</button>
+          <button type="button" data-view="4" aria-pressed="false">Quarter</button>
+        </div>
+      </div>
+      <div class="stage"><div class="bezel"><div class="screen-box" id="screenBox"></div></div></div>
+      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet. Fields left empty show sample values here; your device uses your plugin settings for them.</div>
+    </section>
+    <details class="card">
+      <summary>Data on TRMNL now</summary>
+      <div class="card-body"><pre id="current">Nothing loaded yet.</pre></div>
+    </details>
+  </aside>
 </main>
 
 <script>
@@ -181,7 +264,7 @@ const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
 const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'epc_reference', 'amount_mode', 'epc_amount',
-  'qr_text', 'title', 'caption', 'body', 'footer', 'layout', 'icon', 'image_url'];
+  'qr_text', 'title', 'caption', 'body', 'footer', 'layout', 'icon', 'image_url', 'visual_position'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const $ = (id) => document.getElementById(id);
@@ -192,6 +275,14 @@ function uuidFrom(text) { const m = (text || '').match(UUID); return m ? m[0].to
 function endpoint() { const id = uuidFrom($('webhook').value); return id && 'https://trmnl.com/api/custom_plugins/' + id; }
 
 function status(text, kind) { const el = $('status'); el.textContent = text; el.className = kind || ''; }
+
+function segment(group, onPick) {
+  group.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    group.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    onPick(b);
+  });
+}
 
 // ---- webhook URL: baked in, #id in the link, or remembered in this browser
 (function initWebhook() {
@@ -225,6 +316,7 @@ function readForm() {
     if (v) p[f] = f === 'epc_iban' ? v.replace(/\s+/g, '').toUpperCase() : v;
   });
   if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
+  // the template treats an amount of 0 as "payer chooses"
   if (p.amount_mode === 'open') p.epc_amount = '0';
   else if (p.amount_mode === 'fixed' && !p.epc_amount) delete p.epc_amount;
   delete p.amount_mode;
@@ -233,7 +325,6 @@ function readForm() {
 
 function fillForm(p) {
   FIELDS.forEach((f) => { $(f).value = (p && p[f] != null) ? p[f] : ''; });
-  // the template treats an amount of 0 as "payer chooses"
   const a = p && p.epc_amount;
   $('amount_mode').value = a == null || a === '' ? '' : Number(String(a).replace(',', '.')) > 0 ? 'fixed' : 'open';
   if ($('amount_mode').value === 'open') $('epc_amount').value = '';
@@ -260,14 +351,6 @@ function amountValue() {
   return Number.isFinite(n) && n > 0 && n <= 999999999.99 ? n : NaN;
 }
 
-// ---- preview (mirrors the template's EPC string)
-function epcString(p) {
-  if (!p.epc_iban || !p.epc_name) return null;
-  const amount = p.epc_amount ? Number(p.epc_amount.replace(',', '.')) : 0;
-  return ['BCD', '002', '1', 'SCT', '', p.epc_name, p.epc_iban,
-    amount > 0 ? 'EUR' + amount.toFixed(2) : '', '', '', p.epc_reference || ''].join('\n');
-}
-
 function refresh() {
   const p = readForm();
   const type = p.payment_type;
@@ -282,31 +365,136 @@ function refresh() {
   $('amountHint').textContent = Number.isNaN(amount) ? 'Use a number like 12.50' : '';
   $('amountHint').className = 'hint bad';
 
-  const content = type === 'text' ? p.qr_text : (type === 'epc' || !type) ? epcString(p) : null;
-  const box = $('qr');
-  if (content && window.qrcode) {
-    const qr = qrcode(0, 'M');
-    qr.addData(unescape(encodeURIComponent(content)));
-    qr.make();
-    box.innerHTML = qr.createSvgTag({ margin: 0, scalable: true });
-  } else {
-    box.innerHTML = '<span class="hint">' + (window.qrcode ? 'Fill in the IBAN and name, or a link' : 'Preview needs an internet connection') + '</span>';
-  }
-  let caption = p.caption || '';
-  if (!caption && type !== 'text') {
-    if (p.epc_amount === '0') caption = 'Any amount';
-    else if (amount) caption = 'EUR ' + amount.toFixed(2);
-  }
-  $('previewCaption').textContent = caption;
-
   const bytes = new Blob([JSON.stringify(payloadFor(p))]).size;
-  $('meter').textContent = bytes + ' of ' + MAX_BYTES + ' bytes' + (bytes > MAX_BYTES ? ' (too big, shorten the text)' : '');
+  $('meter').textContent = bytes + ' / ' + MAX_BYTES + ' bytes' + (bytes > MAX_BYTES ? ', too big: shorten the text' : '');
   $('meter').style.color = bytes > MAX_BYTES ? 'var(--err)' : '';
+  if (!$('mdPreview').classList.contains('hidden')) renderMarkdown();
+  scheduleRender();
   return { p, bytes, ibanBad: !!iban && !ibanValid(iban), amountBad: Number.isNaN(amount) };
 }
 
 $('form').addEventListener('input', refresh);
 $('form').addEventListener('change', refresh);
+
+// ---- markdown write / preview
+function markdownHtml(md) {
+  // TRMNL renders markdown with Redcarpet and no extensions, so plain (non GFM) markdown matches best
+  return window.marked ? marked.parse(md || '', { gfm: false }) : '<p>' + (md || '').replace(/[<&]/g, (c) => c === '<' ? '&lt;' : '&amp;') + '</p>';
+}
+function renderMarkdown() {
+  $('mdPreview').innerHTML = $('body').value.trim() ? markdownHtml($('body').value) : '<span class="hint">Nothing to preview yet.</span>';
+}
+segment(document.querySelector('.md-head .seg'), (b) => {
+  const preview = b.dataset.md === 'preview';
+  $('body').classList.toggle('hidden', preview);
+  $('mdPreview').classList.toggle('hidden', !preview);
+  if (preview) renderMarkdown();
+});
+
+// ---- device preview: the plugin's real template, rendered with liquidjs against TRMNL's stylesheet
+const TEMPLATE_URL = 'https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/plugin/src/shared.liquid';
+const FRAMEWORK_CSS = 'https://trmnl.com/css/3.4.0/plugins.min.css';
+const DEVICES = {
+  og: { w: 800, h: 480, classes: 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-trmnl' },
+  x: { w: 1872, h: 1404, classes: 'screen--v2 screen--lg screen--4bit screen--density-2x screen--fonts-trmnl' },
+  bwry: { w: 800, h: 480, classes: 'screen--og screen--md screen--density-1x screen--color-4bwry screen--fonts-trmnl' },
+};
+const VIEWS = { 1: ['full', 1, 1], 2: ['half_horizontal', 1, 0.5], 3: ['half_vertical', 0.5, 1], 4: ['quadrant', 0.5, 0.5] };
+// stands in for the plugin settings, which the webhook cannot read
+const SAMPLE = {
+  payment_type: 'epc', epc_name: 'Jane Doe', epc_iban: 'BE71096123456769', epc_amount: '12.50', epc_reference: 'Coffee fund',
+  qr_text: 'https://paypal.me/yourname', layout: 'split', title: 'Buy me a coffee', caption: '',
+  body: '## Coffee fund\n\nEvery cup is **EUR 0.50**.\n\n- Open your banking app\n- Scan the code',
+  footer: 'Thank you!', icon: 'coffee', image_url: '', visual_position: 'title',
+};
+let engine = null, template = null, device = 'og', view = 1, frame = null, renderTimer = null, renderSeq = 0;
+
+function utf8(s) { return unescape(encodeURIComponent(s)); }
+
+async function initRenderer() {
+  if (!window.liquidjs || !window.qrcode) { $('renderState').textContent = 'preview needs an internet connection'; return; }
+  try {
+    const src = await (await fetch(TEMPLATE_URL, { cache: 'no-cache' })).text();
+    template = src.replace(/\{%-?\s*template\s+main\s*-?%\}/, '').replace(/\{%-?\s*endtemplate\s*-?%\}/, '');
+    engine = new liquidjs.Liquid();
+    engine.registerFilter('qr_code', (data, size, level) => {
+      const lv = String(level || 'h').toUpperCase();
+      const qr = qrcode(0, 'LMQH'.includes(lv) && lv.length === 1 ? lv : 'H');
+      qr.addData(utf8(String(data))); qr.make();
+      return qr.createSvgTag({ margin: 0, scalable: true }).replace('<svg ', '<svg class="qr-code" shape-rendering="crispEdges" ');
+    });
+    // TRMNL (Shopify Liquid) divides integers as integers; liquidjs would return a float
+    engine.registerFilter('divided_by', (a, b) => Number.isInteger(a) && Number.isInteger(b) ? Math.floor(a / b) : a / b);
+    engine.registerFilter('markdown_to_html', (md) => markdownHtml(md));
+    engine.registerFilter('number_to_currency', (n, unit = '$', delim = ',', sep = '.', prec = 2) => {
+      const [i, f] = Number(n).toFixed(prec).split('.');
+      return unit + i.replace(/\B(?=(\d{3})+(?!\d))/g, delim) + (prec > 0 ? sep + f : '');
+    });
+    $('renderState').textContent = '';
+    buildFrame();
+  } catch (e) {
+    $('renderState').textContent = 'preview unavailable';
+  }
+}
+
+function buildFrame() {
+  const d = DEVICES[device];
+  const [name, fw, fh] = VIEWS[view];
+  const box = $('screenBox');
+  box.innerHTML = '';
+  frame = document.createElement('iframe');
+  frame.title = 'Device preview';
+  frame.width = d.w; frame.height = d.h;
+  const slot = view === 1 ? '' : '.screen{--full-w:calc(var(--screen-w) * ' + fw + ') !important;--full-h:calc(var(--screen-h) * ' + fh + ') !important}';
+  frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><base href="https://trmnl.com/">'
+    + '<link rel="stylesheet" href="' + FRAMEWORK_CSS + '"><style>html,body{margin:0}' + slot + '</style></head>'
+    + '<body class="environment trmnl"><div class="screen ' + d.classes + '"><div class="view view--' + name + '" id="v"></div></div></body></html>';
+  frame.addEventListener('load', () => { fitFrame(); renderNow(); });
+  box.appendChild(frame);
+  fitFrame();
+}
+
+function fitFrame() {
+  if (!frame) return;
+  const d = DEVICES[device];
+  // measured from the card, not the stage, so the scaled preview never widens its own column
+  const avail = $('screenBox').closest('.card').clientWidth - 2 * 18 - 2 * 14 - 2 * 12 - 4;
+  const scale = Math.min(1, avail / d.w);
+  frame.style.transform = 'scale(' + scale + ')';
+  $('screenBox').style.width = Math.round(d.w * scale) + 'px';
+  $('screenBox').style.height = Math.round(d.h * scale) + 'px';
+}
+window.addEventListener('resize', fitFrame);
+
+function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderNow, 250); }
+
+async function renderNow() {
+  if (!engine || !frame || !frame.contentDocument) return;
+  const target = frame.contentDocument.getElementById('v');
+  if (!target) return;
+  const seq = ++renderSeq;
+  const p = readForm();
+  const ctx = {
+    trmnl: { plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } },
+    payment: p, view: view,
+  };
+  try {
+    const html = await engine.parseAndRender(template, ctx);
+    if (seq !== renderSeq) return;
+    target.innerHTML = html;
+    // innerHTML does not run scripts; recreate them so the template's fit and color code runs
+    target.querySelectorAll('script').forEach((old) => {
+      const s = frame.contentDocument.createElement('script');
+      s.textContent = old.textContent;
+      old.replaceWith(s);
+    });
+  } catch (e) {
+    target.innerHTML = '<div style="padding:16px;font:14px sans-serif">Preview error: ' + e.message + '</div>';
+  }
+}
+
+segment($('deviceSeg'), (b) => { device = b.dataset.device; buildFrame(); });
+segment($('viewSeg'), (b) => { view = Number(b.dataset.view); buildFrame(); });
 
 // ---- talking to TRMNL
 async function call(method, body) {
@@ -337,8 +525,7 @@ async function load() {
     status('Loading...');
     const data = await call('GET');
     if (!data) return;
-    const p = showCurrent(data);
-    fillForm(p);
+    fillForm(showCurrent(data));
     status('Loaded the data that is on TRMNL now.', 'ok');
   } catch (e) { status(e.message, 'err'); }
 }
@@ -381,10 +568,11 @@ $('downloadBtn').addEventListener('click', () => {
   if (!url) { status('Paste your webhook URL first.', 'err'); return; }
   const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML
     .replace('const BAKED_WEBHOOK = null;', 'const BAKED_WEBHOOK = ' + JSON.stringify(url) + ';');
-  // the live page has filled-in values; the copy starts clean and loads from TRMNL
+  // the live page has filled-in values and a rendered preview; the copy starts clean and loads from TRMNL
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc.getElementById('webhook').setAttribute('value', url);
-  doc.getElementById('qr').innerHTML = '';
+  doc.getElementById('screenBox').innerHTML = '';
+  doc.getElementById('mdPreview').innerHTML = '';
   doc.getElementById('status').textContent = '';
   doc.getElementById('current').textContent = 'Nothing loaded yet.';
   const out = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
@@ -397,6 +585,7 @@ $('downloadBtn').addEventListener('click', () => {
 });
 
 refresh();
+initRenderer();
 if (endpoint()) load();
 </script>
 </body>

@@ -43,6 +43,10 @@
 {%- endif -%}
 {%- assign body = wh.body | default: cf.body | default: "" | strip -%}
 {%- assign footer = wh.footer | default: cf.footer | default: "" | strip -%}
+{%- comment -%} without text a side-by-side layout would leave a column empty, so center everything {%- endcomment -%}
+{%- if body == blank -%}
+  {%- if layout_opt == "split" or layout_opt == "split_reverse" -%}{%- assign layout_opt = "poster" -%}{%- endif -%}
+{%- endif -%}
 {%- comment -%} text starts large and the script at the bottom shrinks it to fit {%- endcomment -%}
 {%- assign text_size = "large" -%}
 {%- assign text_align = "left" -%}
@@ -62,8 +66,11 @@
 {%- if layout_opt == "split" or layout_opt == "split_reverse" -%}
   {%- if view == 3 -%}{%- assign mode = "stacked" -%}{%- endif -%}
 {%- endif -%}
-{%- if layout_opt == "poster" and view == 2 or layout_opt == "poster" and view == 4 -%}
-  {%- assign mode = "split" -%}
+{%- comment -%} short views put the poster side by side, unless there is nothing to put beside the QR {%- endcomment -%}
+{%- assign beside = false -%}
+{%- if title != blank or footer != blank or has_visual -%}{%- assign beside = true -%}{%- endif -%}
+{%- if layout_opt == "poster" and beside -%}
+  {%- if view == 2 or view == 4 -%}{%- assign mode = "split" -%}{%- endif -%}
 {%- endif -%}
 {%- if layout_opt == "qr_only" and view == 4 -%}{%- assign mode = "split" -%}{%- endif -%}
 {%- assign reverse = false -%}
@@ -149,7 +156,7 @@
 
 {%- comment -%} ---------- building blocks ---------- {%- endcomment -%}
 {%- capture qr_box -%}
-<div class="relative shrink-0 aspect--1/1 {{ qr_dims }}">
+<div class="relative shrink-0 aspect--1/1 w--max-full {{ qr_dims }}">
   {%- if payload != blank -%}
     {{ payload | qr_code: 11, level }}
     {%- if visual_qr -%}
@@ -197,7 +204,7 @@
   </div>
   {%- endcapture -%}
   {%- capture text_col -%}
-  <div class="flex flex--col flex--stretch flex--top gap--small stretch">
+  <div class="flex flex--col flex--stretch-x flex--top gap--small stretch">
     {%- if visual_top -%}<div class="shrink-0 h--[22cqh] w--full flex flex--row{% if text_align != "center" %} flex--left{% endif %}"><div class="h--full aspect--1/1" data-accent="{{ accent_text }}">{{ visual }}</div></div>{%- endif -%}
     {{ heading }}
     {%- if caption != blank and caption_under_qr == false -%}<span class="title {{ caption_size }}" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
@@ -243,6 +250,10 @@
     view.querySelectorAll('[data-qr-body]').forEach(function (box) {
       var content = box.firstElementChild;
       box.style.overflow = 'hidden';
+      // start from the original text each run, so a later run can undo an early, too-tight one
+      if (box._orig == null) box._orig = [content.className, content.innerHTML];
+      content.className = box._orig[0];
+      content.innerHTML = box._orig[1];
       var over = function () { return content.scrollHeight > box.clientHeight + 1; };
       var i = SIZES.findIndex(function (c) { return content.classList.contains(c); });
       while (over() && i >= 0 && i < SIZES.length - 1) {
@@ -264,7 +275,9 @@
       }
     });
   }
+  // the framework settles its own layout on load, so fit again after it
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit, fit); else fit();
+  window.addEventListener('load', function () { setTimeout(fit, 100); });
 })();
 </script>
 {% endtemplate %}
