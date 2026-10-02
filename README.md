@@ -55,6 +55,8 @@ node test/transform.test.js # the transform's logic, in milliseconds
 node test/run.js [filter]   # renders; needs trmnlp and zbarimg (apt install zbar-tools)
 ```
 
-`test/run.js` builds the plugin for about 20 content cases on OG, OG portrait, TRMNL X, a small Kindle, a color panel and both font sets, in every view size. Each render must pick the expected layout, scan to exactly the expected payload (via zbar), have QR modules of at least 2 px, and keep all text inside the view, off the QR and above the title bar. Screenshots land in `test/shots/`.
+`test/run.js` builds the plugin for about 20 content cases on OG, OG portrait, TRMNL X, a small Kindle, a color panel and both font sets, in every view size. Each render must pick the expected layout, scan to exactly the expected payload (via zbar), have QR modules of at least 2 px, and keep all text inside the view, off the QR and above the title bar. Screenshots land in `test/shots/`. The whole flow is drawn in [test/testing.puml](test/testing.puml):
+
+![How the plugin is tested](test/testing.png)
 
 Icons are from [Lucide](https://lucide.dev) (ISC).

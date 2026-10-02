@@ -1,0 +1,83 @@
+@startuml testing
+title How the plugin is tested with trmnlp
+
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+
+actor Developer as dev
+participant "test/transform.test.js" as unit
+participant "test/run.js" as run
+participant "temp copy of plugin/\n(.trmnlp.yml + src/)" as tmp
+participant "trmnlp build" as trmnlp
+participant "src/transform.js\n(node subprocess)" as tf
+participant "shared.liquid\n(trmnl-liquid filters:\nqr_code, markdown_to_html)" as liquid
+participant "test/.cache\n(plugins.css 3.4.0 + fonts)" as cache
+participant "Chromium\n(playwright-core)" as chrome
+participant "zbarimg" as zbar
+
+== 1. Pure logic, milliseconds ==
+dev -> unit : node test/transform.test.js
+unit -> tf : require() and call run(input)
+note right of unit
+  source choice (settings vs webhook),
+  EPC payload, amount rules, captions,
+  price rows, title bar
+end note
+tf --> unit : { qr: {...} }
+unit --> dev : 15 assertions
+
+== 2. Rendered layout, ~2 minutes ==
+dev -> run : node test/run.js [filter]
+loop every content case (about 30)
+  run -> tmp : copy src/, write .trmnlp.yml\n(custom_fields + webhook "payment" variables)
+  opt case.patch (e.g. the server's fixed-size QR svg)
+    run -> tmp : rewrite shared.liquid in the copy only
+  end
+  run -> trmnlp : trmnlp build (cwd = copy)
+  trmnlp -> tf : run(input)
+  tf --> trmnlp : qr object
+  trmnlp -> liquid : render full / half_horizontal / half_vertical / quadrant
+  liquid --> trmnlp : _build/<view>.html
+  trmnlp --> run : 4 HTML files (memoized per case)
+
+  loop every device x view in the case's matrix
+    run -> cache : swap trmnl.com CSS/JS and /fonts/ for local copies
+    note right of run
+      devices: OG, OG portrait, TRMNL X,
+      Kindle (screen~--sm), BWRY color,
+      classic fonts. A half or quarter is a
+      slot inside the screen (~--full-w / ~--full-h),
+      not a smaller screen.
+    end note
+    run -> chrome : open page at the device's pixel size\n+ screen~--* classes
+    chrome -> chrome : fonts ready, template script\n(accent colors, list marks, text fit)
+    run -> chrome : measure(): layout mode, QR box,\ntext rects, overflow, rows, title bar
+    chrome --> run : numbers
+    run -> chrome : screenshot
+    chrome --> run : PNG -> test/shots/
+    run -> zbar : decode PNG (-Sbinary)
+    zbar --> run : exact QR payload
+    run -> run : assertions
+    note right of run
+      layout chosen = expected (rule written in the test)
+      QR scans to exactly the expected payload
+      QR modules >= 2 px, quiet zone >= 6 px,
+      code fills >= 98 % of its box
+      no text off-screen, on the QR or under the title bar
+      body text fits, price rows right-aligned and full width
+      list items have a mark, title bar text / icon / hidden
+    end note
+  end
+end
+run --> dev : "107 passed, 0 failed" + screenshots
+
+== 3. Ship ==
+dev -> trmnlp : trmnlp lint, trmnlp push, then trmnlp pull
+note right of trmnlp
+  the device is the last check: TRMNL's server
+  can differ from trmnlp (its qr_code svg had a
+  fixed size), so a difference found there
+  becomes a new case with a source patch
+end note
+@enduml
