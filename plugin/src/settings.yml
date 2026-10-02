@@ -4,12 +4,15 @@ no_screen_padding: 'no'
 dark_mode: 'no'
 static_data: ''
 polling_verb: get
+framework_version: 3.4.0
+serverless_language:
+refresh_interval_floor:
 polling_url: ''
 polling_headers: ''
 polling_body: ''
-framework_version: 3.4.0
-name: Payment QR Code
-refresh_interval: 1440
+id: 494226
+oauth_enabled: 'false'
+oauth_pkce_enabled: 'no'
 custom_fields:
 - keyname: about
   name: About This Plugin
@@ -245,3 +248,6 @@ custom_fields:
   field_type: boolean
   default: true
   optional: true
+name: Payment QR Code
+description:
+refresh_interval: 1440
