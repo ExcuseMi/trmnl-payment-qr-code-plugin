@@ -1,69 +1,47 @@
 @startuml testing
-title How the plugin is tested with trmnlp
+title How the plugin is tested with trmnlp-test
 
 skinparam shadowing false
 skinparam sequenceMessageAlign left
 skinparam responseMessageBelowArrow true
 
 actor Developer as dev
-participant "test/run.js" as run
-participant "temp copy of plugin/\n(.trmnlp.yml + src/)" as tmp
-participant "trmnlp build" as trmnlp
-participant "shared.liquid\n(data + layout, trmnl-liquid filters:\nqr_code, markdown_to_html)" as liquid
-participant "test/.cache\n(plugins.css 3.4.0 + fonts)" as cache
-participant "Chromium\n(playwright-core)" as chrome
-participant "zbarimg" as zbar
+participant "trmnlp-test\n(gem, Docker image)" as cli
+participant "test/trmnl/plugin.spec.js\n(Playwright workers)" as spec
+participant "harness\n(trmnlp's own Liquid, settings\nand webhook handling)" as harness
+participant "shared.liquid\n(data + layout)" as liquid
+participant "Chromium page\n(device classes, palette,\ncached framework + fonts)" as page
+participant "zbar" as zbar
 
-== 1. Rendered tests, ~3 minutes ==
-dev -> run : node test/run.js [filter]
-loop every content case (about 40)
-  run -> tmp : copy src/, write .trmnlp.yml\n(custom_fields + webhook "payment" variables)
-  opt case.patch (e.g. the server's fixed-size QR svg)
-    run -> tmp : rewrite shared.liquid in the copy only
+dev -> cli : trmnlp-test [-g filter]
+cli -> spec : run 114 tests in parallel
+loop every test
+  opt server variant
+    spec -> spec : copy plugin/, patch shared.liquid the way\nTRMNL's server differs (fixed-size or sized svg,\nCRLF line endings, broken image)
   end
-  run -> trmnlp : trmnlp build (cwd = copy)
-  trmnlp -> liquid : render full / half_horizontal / half_vertical / quadrant\nwith the settings and webhook "payment"
-  liquid --> trmnlp : _build/<view>.html
-  trmnlp --> run : 4 HTML files (memoized per case)
-
-  loop every device x view in the case's matrix
-    run -> cache : swap trmnl.com CSS/JS and /fonts/ for local copies
-    note right of run
-      devices: OG, OG portrait, TRMNL X,
-      Kindle (screen~--sm), BWRY color, classic
-      fonts, dark mode (screen inverted, images not). A half or quarter is a
-      slot inside the screen (~--full-w / ~--full-h),
-      not a smaller screen.
-    end note
-    run -> chrome : open page at the device's pixel size\n+ screen~--* classes
-    chrome -> chrome : fonts ready, template script\n(accent colors, list marks, text fit)
-    run -> chrome : measure(): layout mode, QR box,\ntext rects, overflow, rows, title bar
-    chrome --> run : numbers
-    run -> chrome : screenshot
-    chrome --> run : PNG -> test/shots/
-    run -> zbar : decode PNG (-Sbinary)
-    zbar --> run : exact QR payload
-    run -> run : assertions
-    note right of run
-      layout chosen = expected (rule written in the test)
-      QR scans to exactly the expected payload
-      QR modules >= 2 px, quiet zone >= 6 px,
-      code fills >= 98 % of its box, still scans in dark mode
-      no text off-screen, on the QR or under the title bar
-      body text fits, price rows right-aligned and full width
-      list items have a mark, dividers, footer not cut,
-      title bar text / icon / hidden
-    end note
-  end
+  spec -> harness : render({ device, view, orientation, darkMode,\nlocale, fonts, fields, webhook })
+  harness -> liquid : render with the settings and the webhook "payment"
+  liquid --> harness : markup
+  harness -> page : open at the device's size
+  page --> spec : screen
+  spec -> page : locators and geometry
+  note right of spec
+    layout chosen = expected (rule written in the test)
+    no overflow, nothing on the QR, quiet zone >= 6 px,
+    QR modules >= 2 px, code fills >= 98 % of its box
+    price rows right-aligned and full width, list marks,
+    dividers, captions per language, title bar
+  end note
+  spec -> zbar : screenshot reduced to the device palette
+  zbar --> spec : exact QR payload (also in dark mode)
 end
-run --> dev : "117 passed, 0 failed" + screenshots
+cli --> dev : "114 passed" + gallery report (test/trmnl-report)
 
-== 2. Ship ==
-dev -> trmnlp : trmnlp lint, trmnlp push, then trmnlp pull
-note right of trmnlp
-  the device is the last check: TRMNL's server
-  can differ from trmnlp (its qr_code svg had a
-  fixed size), so a difference found there
-  becomes a new case with a source patch
+== Ship ==
+dev -> dev : trmnlp lint, trmnlp push, then trmnlp pull
+note right of dev
+  the device is the last check: when the server shows
+  something trmnlp does not, that difference becomes a
+  new "server variant" test
 end note
 @enduml

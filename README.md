@@ -52,11 +52,11 @@ Everything happens in `plugin/src/shared.liquid`, which TRMNL runs on every rend
 
 ```sh
 cd plugin && trmnlp serve   # preview
-cd test && npm install      # once; uses the Playwright Chromium in ~/.cache/ms-playwright
-node test/run.js [filter]   # renders; needs trmnlp and zbarimg (apt install zbar-tools)
+gem install trmnlp-test     # once; needs Docker
+trmnlp-test [-g filter]     # the tests in test/trmnl/, report in test/trmnl-report/
 ```
 
-`test/run.js` builds the plugin for about 20 content cases on OG, OG portrait, TRMNL X, a small Kindle, a color panel and both font sets, in every view size. Each render must pick the expected layout, scan to exactly the expected payload (via zbar), have QR modules of at least 2 px, and keep all text inside the view, off the QR and above the title bar. Screenshots land in `test/shots/`. The whole flow is drawn in [test/testing.puml](test/testing.puml):
+The tests use [trmnlp-test](https://github.com/ExcuseMi/trmnlp-test): about 110 renders on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. "Server variant" tests patch a copy of the template the way TRMNL's server differs from trmnlp (QR svg size, CRLF line endings). The flow is drawn in [test/testing.puml](test/testing.puml):
 
 ![How the plugin is tested](test/testing.png)
 

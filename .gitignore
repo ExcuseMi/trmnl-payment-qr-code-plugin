@@ -1,5 +1,3 @@
 plugin/_build/
-test/shots/
-test/.cache/
 .idea/
-test/node_modules/
+test/trmnl-report/
