@@ -5,6 +5,8 @@
 Show a scannable payment QR code with your own text on a TRMNL.
 
 - **SEPA transfer (EPC QR)**, scanned by most European banking apps, with a fixed amount or one the payer chooses
+- **Bancontact** for merchants with a Bancontact Pro (formerly Payconiq) payment profile: the plugin builds the `pay.bancontact.net` Top Up link from the profile ID, amount, title and reference, no API needed. Use a Top Up profile so one code can be paid many times; receipt and invoice profiles give single-use codes. No Bancontact logo is bundled: add the official mark through Image URL if your contract allows it
+- The plugin's own words (default caption, amounts, messages) follow the TRMNL account language: English, Dutch, French and German, with amounts written the local way (`€ 2,40`, `2,40 €`)
 - **Any link or text**: PayPal.me, Revolut, Payconiq, Stripe, Bitcoin, ...
 - **No layout settings**: with text the QR sits beside it (stacked on portrait screens and tall mashup slots); without text title, QR and footer are centered
 - Markdown text that shrinks to fit, with bullets and price rows: `- Espresso | €2.40` puts the price on the right with a dotted leader
@@ -40,7 +42,7 @@ curl "https://trmnl.com/api/custom_plugins/<uuid>" -H "Content-Type: application
 
 Webhook-only keys for the title bar as well: `show_title_bar` (`false` hides it), `title_bar` (its text) and `title_bar_icon` (an image URL).
 
-Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `title_bar_icon`, `show_title_bar`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
+Keys: `payment_type` (`epc`/`bancontact`/`text`), `epc_name`, `epc_iban`, `bc_profile_id`, `epc_amount` (`0` lets the payer choose), `epc_reference`, `qr_text`, `title`, `caption`, `body`, `footer`, `title_bar`, `title_bar_icon`, `show_title_bar`, `icon`, `image_url`. TRMNL allows 12 webhook updates per hour and 2 KB of data.
 
 ## How it is built
 

@@ -12,35 +12,85 @@
 {%- capture nl %}
 {% endcapture -%}
 
-{%- comment -%} EPC QR (European Payments Council, version 002): an empty, zero or invalid amount lets the payer choose {%- endcomment -%}
+{%- comment -%}
+  The plugin's own words, in the account's language (trmnl.user.locale). What people type themselves
+  (title, caption, text, footer) is shown as typed.
+{%- endcomment -%}
+{%- assign locale = trmnl.user.locale | default: "en" | downcase | slice: 0, 2 -%}
+{%- case locale -%}
+{%- when "nl" -%}
+  {%- assign t_any = "Vrij bedrag" -%}{%- assign t_pay_bc = "Betaal met Bancontact" -%}{%- assign t_pay_bc_amount = "Betaal AMOUNT met Bancontact" -%}
+  {%- assign t_missing_settings = "Vul de betaalgegevens in bij de plugin-instellingen" -%}{%- assign t_missing_webhook = "Stuur de betaalgegevens naar de webhook" -%}
+  {%- assign money_delim = "." -%}{%- assign money_sep = "," -%}{%- assign money_before = "€ " -%}{%- assign money_after = "" -%}
+{%- when "fr" -%}
+  {%- assign t_any = "Montant libre" -%}{%- assign t_pay_bc = "Payez avec Bancontact" -%}{%- assign t_pay_bc_amount = "Payez AMOUNT avec Bancontact" -%}
+  {%- assign t_missing_settings = "Complétez les données de paiement dans les paramètres du plugin" -%}{%- assign t_missing_webhook = "Envoyez les données de paiement au webhook" -%}
+  {%- assign money_delim = " " -%}{%- assign money_sep = "," -%}{%- assign money_before = "" -%}{%- assign money_after = " €" -%}
+{%- when "de" -%}
+  {%- assign t_any = "Beliebiger Betrag" -%}{%- assign t_pay_bc = "Mit Bancontact bezahlen" -%}{%- assign t_pay_bc_amount = "AMOUNT mit Bancontact bezahlen" -%}
+  {%- assign t_missing_settings = "Zahlungsdaten in den Plugin-Einstellungen eintragen" -%}{%- assign t_missing_webhook = "Zahlungsdaten an den Webhook senden" -%}
+  {%- assign money_delim = "." -%}{%- assign money_sep = "," -%}{%- assign money_before = "" -%}{%- assign money_after = " €" -%}
+{%- else -%}
+  {%- assign t_any = "Any amount" -%}{%- assign t_pay_bc = "Pay with Bancontact" -%}{%- assign t_pay_bc_amount = "Pay AMOUNT with Bancontact" -%}
+  {%- assign t_missing_settings = "Fill in the payment details in the plugin settings" -%}{%- assign t_missing_webhook = "Send the payment details to the webhook" -%}
+  {%- assign money_delim = "," -%}{%- assign money_sep = "." -%}{%- assign money_before = "€" -%}{%- assign money_after = "" -%}
+{%- endcase -%}
+
+{%- comment -%} amount: an empty, zero or invalid amount lets the payer choose {%- endcomment -%}
 {%- assign payment_type = "epc" -%}
-{%- if src.payment_type == "text" -%}{%- assign payment_type = "text" -%}{%- endif -%}
+{%- if src.payment_type == "text" or src.payment_type == "bancontact" -%}{%- assign payment_type = src.payment_type -%}{%- endif -%}
 {%- assign payload = "" -%}
 {%- assign amount = "" -%}
 {%- assign amount_display = "" -%}
+{%- assign amount_raw = src.epc_amount | default: "" | strip | replace: ",", "." -%}
+{%- if amount_raw != blank -%}
+  {%- assign amount_num = amount_raw | times: 1.0 | round: 2 -%}
+  {%- if amount_num > 0 -%}
+    {%- assign amount = amount_num | number_to_currency: "", "", ".", 2 -%}
+    {%- assign amount_display = amount_num | number_to_currency: "", money_delim, money_sep, 2 | prepend: money_before | append: money_after -%}
+  {%- endif -%}
+{%- endif -%}
+
 {%- if payment_type == "epc" -%}
+  {%- comment -%} EPC QR (European Payments Council, version 002), read by most European banking apps {%- endcomment -%}
   {%- assign beneficiary = src.epc_name | default: "" | strip | slice: 0, 70 -%}
   {%- assign iban = src.epc_iban | default: "" | remove: " " | upcase -%}
   {%- assign reference = src.epc_reference | default: "" | strip | slice: 0, 140 -%}
-  {%- assign amount_raw = src.epc_amount | default: "" | strip | replace: ",", "." -%}
-  {%- if amount_raw != blank -%}
-    {%- assign amount_num = amount_raw | times: 1.0 | round: 2 -%}
-    {%- if amount_num > 0 -%}
-      {%- assign amount = amount_num | number_to_currency: "", "", ".", 2 -%}
-      {%- assign amount_display = amount_num | number_to_currency: "EUR " -%}
-    {%- endif -%}
-  {%- endif -%}
   {%- if iban != blank and beneficiary != blank -%}
     {%- capture amount_field %}{% if amount != blank %}EUR{{ amount }}{% endif %}{% endcapture -%}
     {%- capture payload -%}BCD{{ nl }}002{{ nl }}1{{ nl }}SCT{{ nl }}{{ nl }}{{ beneficiary }}{{ nl }}{{ iban }}{{ nl }}{{ amount_field }}{{ nl }}{{ nl }}{{ nl }}{{ reference }}{%- endcapture -%}
+  {%- endif -%}
+{%- elsif payment_type == "bancontact" -%}
+  {%- comment -%}
+    Bancontact Pro (formerly Payconiq) "Top Up" link: no API call, reusable until revoked, read by the
+    Bancontact Pay app and banking apps. D (description, the title) and R (reference) are at most 35
+    characters, A is the amount in cents (1 to 999999); without A the payer types the amount.
+  {%- endcomment -%}
+  {%- assign profile_id = src.bc_profile_id | default: "" | strip -%}
+  {%- if profile_id != blank -%}
+    {%- assign bc_params = "" -%}
+    {%- assign bc_desc = src.title | default: "" | strip | slice: 0, 35 | strip -%}
+    {%- if bc_desc != blank -%}{%- assign bc_desc_enc = bc_desc | url_encode | replace: "+", "%20" -%}{%- assign bc_params = bc_params | append: "&D=" | append: bc_desc_enc -%}{%- endif -%}
+    {%- if amount != blank -%}
+      {%- assign cents = amount_num | times: 100 | round -%}
+      {%- if cents <= 999999 -%}{%- assign bc_params = bc_params | append: "&A=" | append: cents -%}{%- endif -%}
+    {%- endif -%}
+    {%- assign bc_ref = src.epc_reference | default: "" | strip | slice: 0, 35 | strip -%}
+    {%- if bc_ref != blank -%}{%- assign bc_ref_enc = bc_ref | url_encode | replace: "+", "%20" -%}{%- assign bc_params = bc_params | append: "&R=" | append: bc_ref_enc -%}{%- endif -%}
+    {%- assign payload = "https://pay.bancontact.net/t/1/" | append: profile_id -%}
+    {%- if bc_params != blank -%}{%- assign payload = payload | append: "?" | append: bc_params | remove_first: "&" -%}{%- endif -%}
   {%- endif -%}
 {%- else -%}
   {%- assign payload = src.qr_text | default: "" | strip -%}
 {%- endif -%}
 
 {%- assign caption = src.caption | default: "" | strip -%}
-{%- if caption == blank and payment_type == "epc" and payload != blank -%}
-  {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = "Any amount" -%}{%- endif -%}
+{%- if caption == blank and payload != blank -%}
+  {%- if payment_type == "epc" -%}
+    {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = t_any -%}{%- endif -%}
+  {%- elsif payment_type == "bancontact" -%}
+    {%- if amount_display != blank -%}{%- assign caption = t_pay_bc_amount | replace: "AMOUNT", amount_display -%}{%- else -%}{%- assign caption = t_pay_bc -%}{%- endif -%}
+  {%- endif -%}
 {%- endif -%}
 {%- assign title = src.title | default: "" | strip -%}
 {%- assign footer = src.footer | default: "" | strip -%}
@@ -48,11 +98,7 @@
 {%- assign image_url = src.image_url | default: "" | strip -%}
 {%- assign has_visual = false -%}
 {%- if image_url != blank or icon != "none" -%}{%- assign has_visual = true -%}{%- endif -%}
-{%- if webhook_mode -%}
-  {%- assign missing = "Send the payment details to the webhook" -%}
-{%- else -%}
-  {%- assign missing = "Fill in the payment details in the plugin settings" -%}
-{%- endif -%}
+{%- if webhook_mode -%}{%- assign missing = t_missing_webhook -%}{%- else -%}{%- assign missing = t_missing_settings -%}{%- endif -%}
 
 {%- comment -%}
   Price rows: "- Espresso | €2.40" becomes a row with the price on the right. Markdown passes inline

@@ -58,6 +58,7 @@ custom_fields:
     - epc_iban
     - epc_amount
     - epc_reference
+    - bc_profile_id
     - qr_text
     - title
     - caption
@@ -79,11 +80,18 @@ custom_fields:
   description: What the QR code contains.
   options:
   - SEPA transfer (EPC QR): epc
+  - Bancontact (merchants): bancontact
   - Payment link or text: text
   default: epc
   conditional_validation:
   - when: epc
     hidden:
+    - qr_text
+    - bc_profile_id
+  - when: bancontact
+    hidden:
+    - epc_name
+    - epc_iban
     - qr_text
   - when: text
     hidden:
@@ -91,6 +99,7 @@ custom_fields:
     - epc_iban
     - epc_amount
     - epc_reference
+    - bc_profile_id
 - keyname: epc_name
   name: Beneficiary Name
   field_type: string
@@ -103,6 +112,12 @@ custom_fields:
   description: The account to pay into. Spaces are fine.
   placeholder: BE71 0961 2345 6769
   optional: true
+- keyname: bc_profile_id
+  name: Bancontact Payment Profile ID
+  field_type: string
+  description: 'From Bancontact Pro (formerly Payconiq). Use the ID of a <strong>Top Up</strong> payment profile: its code can be paid many times. Receipt and invoice profiles give single-use codes. The title becomes the payment description; title and reference are cut to 35 characters.'
+  placeholder: 5bb37284e35e2b29e363df22
+  optional: true
 - keyname: epc_amount
   name: Amount (EUR)
   field_type: string
@@ -112,7 +127,7 @@ custom_fields:
 - keyname: epc_reference
   name: Payment Reference
   field_type: string
-  description: Message shown on the transfer (max 140 characters).
+  description: Message shown on the transfer (max 140 characters, 35 for Bancontact).
   placeholder: Coffee fund
   optional: true
 - keyname: qr_text
@@ -199,5 +214,5 @@ custom_fields:
   optional: true
 name: Payment QR Code
 description: Payment QR code with your own text
-recipe_overview: Show a scannable payment QR code on your TRMNL, so people can pay you by pointing their phone at the screen. Choose a SEPA bank transfer (EPC QR, opened by most European banking apps with name, IBAN, amount and reference filled in) with a fixed amount or one the payer picks, or encode any payment link such as PayPal.me, Revolut or a Bitcoin address. Add a title, a caption under the code and markdown text, including price lists where each price lines up on the right with a dotted leader. The layout adapts by itself to your text and screen, from full screen and portrait to half and quarter mashup slots, and adds a red accent on color screens. Use it for a coffee corner, a shared household fund, a market stall, a club membership or a tip jar. Switch Data Source to Webhook to update prices, amount or reference from a simple web editor on any phone, so staff can change the screen without a TRMNL account.
+recipe_overview: 'Show a scannable payment QR code on your TRMNL, so people can pay you by pointing their phone at the screen. Choose a SEPA bank transfer (EPC QR, opened by most European banking apps with name, IBAN, amount and reference filled in) with a fixed amount or one the payer picks, for merchants a Bancontact code built from their Bancontact Pro payment profile, or encode any payment link such as PayPal.me, Revolut or a Bitcoin address. Add a title, a caption under the code and markdown text, including price lists where each price lines up on the right with a dotted leader. The layout adapts by itself to your text and screen, from full screen and portrait to half and quarter mashup slots, and adds a red accent on color screens and keeps the code readable in dark mode. Its own captions follow your account language: English, Dutch, French or German. Use it for a coffee corner, a shared household fund, a market stall, a club membership or a tip jar. Switch Data Source to Webhook to update prices, amount or reference from a simple web editor on any phone, so staff can change the screen without a TRMNL account.'
 refresh_interval: 15

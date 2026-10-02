@@ -95,14 +95,23 @@ const CASES = [
   { name: 'image fallback', fields: {}, payload: EPC_BASE, fallback: true, patch: (src) => src.replace('src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}"', 'src="data:image/svg+xml;base64,broken"'), matrix: [['og', [1, 4]]] },
   { name: 'fixed-size svg with text', fields: {}, payload: EPC_BASE, patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', [1, 2]], ['x', [1]]] },
   // rules the serverless transform's unit tests used to cover, now checked on the render
-  { name: 'big amount', fields: { epc_amount: '1234.5' }, payload: epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), caption: 'EUR 1,234.50', matrix: [['og', [1]]] },
+  { name: 'big amount', fields: { epc_amount: '1234.5' }, payload: epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), caption: '€1,234.50', matrix: [['og', [1]]] },
   { name: 'reference limit', fields: { epc_reference: 'R'.repeat(200) }, payload: epc('Jane Doe', 'BE71096123456769', '12.50', 'R'.repeat(140)), matrix: [['og', [1]]] },
   { name: 'link has no default caption', fields: { payment_type: 'text', qr_text: ' https://paypal.me/jane/5 ', caption: '' }, payload: 'https://paypal.me/jane/5', noCaption: true, matrix: [['og', [1]]] },
   { name: 'title bar hidden by a "no" string', fields: {}, webhook: Object.assign({}, BASE, { show_title_bar: 'no' }), payload: EPC_BASE, noTitleBar: true, matrix: [['og', [1]]] },
+  // Bancontact Pro "Top Up" link: built from the payment profile ID, no API call
+  { name: 'bancontact fixed amount', fields: { payment_type: 'bancontact', bc_profile_id: '5bb37284e35e2b29e363df22', epc_amount: '2.40', epc_reference: 'Espresso', title: 'Northbean Coffee' }, payload: 'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22?D=Northbean%20Coffee&A=240&R=Espresso', caption: 'Pay €2.40 with Bancontact', matrix: [['og', [1, 4]], ['og_dark', [1]]] },
+  { name: 'bancontact open amount', fields: { payment_type: 'bancontact', bc_profile_id: '5bb37284e35e2b29e363df22', epc_amount: '', epc_reference: '', title: '' }, payload: 'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22', caption: 'Pay with Bancontact', matrix: [['og', [1]]] },
+  { name: 'bancontact encodes and caps D and R', fields: { payment_type: 'bancontact', bc_profile_id: 'abc123', epc_amount: '0', epc_reference: 'Invoice #12 & co', title: 'Café Brussel: the coffee corner on the first floor' }, payload: 'https://pay.bancontact.net/t/1/abc123?D=Caf%C3%A9%20Brussel%3A%20the%20coffee%20corner%20on&R=Invoice%20%2312%20%26%20co', caption: 'Pay with Bancontact', matrix: [['og', [1]]] },
+  { name: 'bancontact without profile id', fields: { payment_type: 'bancontact', bc_profile_id: '' }, payload: null, matrix: [['og', [1]]] },
+  // the plugin's own words follow the account's language
+  { name: 'dutch', fields: { epc_amount: '1234.5' }, locale: 'nl', payload: epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), caption: '€ 1.234,50', matrix: [['og', [1]]] },
+  { name: 'french', fields: { epc_amount: '' }, locale: 'fr', payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Montant libre', matrix: [['og', [1]]] },
+  { name: 'german bancontact', fields: { payment_type: 'bancontact', bc_profile_id: 'abc123', epc_amount: '3', epc_reference: '', title: '' }, locale: 'de-DE', payload: 'https://pay.bancontact.net/t/1/abc123?A=300', caption: '3,00 € mit Bancontact bezahlen', matrix: [['og', [1]]] },
   // payload rules
   { name: 'amount open', fields: { epc_amount: '' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
   { name: 'amount zero is open', fields: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
-  { name: 'amount comma', fields: { epc_amount: '7,5' }, payload: epc('Jane Doe', 'BE71096123456769', '7.50', 'Coffee fund'), caption: 'EUR 7.50', matrix: [['og', [1]]] },
+  { name: 'amount comma', fields: { epc_amount: '7,5' }, payload: epc('Jane Doe', 'BE71096123456769', '7.50', 'Coffee fund'), caption: '€7.50', matrix: [['og', [1]]] },
   { name: 'amount not a number', fields: { epc_amount: 'abc' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), matrix: [['og', [1]]] },
   { name: 'iban cleanup', fields: { epc_iban: 'be71 0961 2345 6769 ' }, payload: EPC_BASE, matrix: [['og', [1]]] },
   { name: 'name limit', fields: { epc_name: 'N'.repeat(90) }, payload: epc('N'.repeat(70), 'BE71096123456769', '12.50', 'Coffee fund'), matrix: [['og', [1]]] },
@@ -129,10 +138,10 @@ const CASES = [
 
 // ---------------------------------------------------------------- build (one trmnlp build per content)
 const builds = new Map();
-function build(fields, webhook, patch) {
+function build(fields, webhook, patch, locale) {
   // webhook data only counts when the data source says so
   if (webhook && !fields.data_source) fields = Object.assign({}, fields, { data_source: 'webhook' });
-  const key = JSON.stringify([fields, webhook || null, patch ? patch.toString() : null]);
+  const key = JSON.stringify([fields, webhook || null, patch ? patch.toString() : null, locale || null]);
   if (builds.has(key)) return builds.get(key);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qrplugin-'));
   fs.cpSync(path.join(PLUGIN, 'src'), path.join(dir, 'src'), { recursive: true });
@@ -144,6 +153,7 @@ function build(fields, webhook, patch) {
     fs.writeFileSync(shared, after);
   }
   const variables = { trmnl: { plugin_settings: { instance_name: 'Payment QR Code' } } };
+  if (locale) variables.trmnl.user = { locale };
   if (webhook) variables.payment = webhook;
   // JSON is valid YAML, and a build in a copy never touches the tracked .trmnlp.yml
   fs.writeFileSync(path.join(dir, '.trmnlp.yml'), JSON.stringify({ watch: ['src'], custom_fields: fields, variables }));
@@ -275,7 +285,7 @@ function decode(png) {
         const errors = [];
         const d = DEVICES[dev];
         const [, fw, fh] = VIEWS[view];
-        let html = localize(build(Object.assign({}, BASE, c.fields), c.webhook, c.patch)[view]);
+        let html = localize(build(Object.assign({}, BASE, c.fields), c.webhook, c.patch, c.locale)[view]);
         html = html.replace(/class="screen([^"]*)"/, (m, rest) => `class="screen${rest} ${d.classes}"`);
         if (d.css) html = html.replace('</head>', `<style>${d.css}</style></head>`);
         if (view !== 1) html = html.replace('</head>', `<style>.screen{--full-w:calc(var(--screen-w) * ${fw}) !important;--full-h:calc(var(--screen-h) * ${fh}) !important}</style></head>`);
