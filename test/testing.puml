@@ -6,38 +6,23 @@ skinparam sequenceMessageAlign left
 skinparam responseMessageBelowArrow true
 
 actor Developer as dev
-participant "test/transform.test.js" as unit
 participant "test/run.js" as run
 participant "temp copy of plugin/\n(.trmnlp.yml + src/)" as tmp
 participant "trmnlp build" as trmnlp
-participant "src/transform.js\n(node subprocess)" as tf
-participant "shared.liquid\n(trmnl-liquid filters:\nqr_code, markdown_to_html)" as liquid
+participant "shared.liquid\n(data + layout, trmnl-liquid filters:\nqr_code, markdown_to_html)" as liquid
 participant "test/.cache\n(plugins.css 3.4.0 + fonts)" as cache
 participant "Chromium\n(playwright-core)" as chrome
 participant "zbarimg" as zbar
 
-== 1. Pure logic, milliseconds ==
-dev -> unit : node test/transform.test.js
-unit -> tf : require() and call run(input)
-note right of unit
-  source choice (settings vs webhook),
-  EPC payload, amount rules, captions,
-  price rows, title bar
-end note
-tf --> unit : { qr: {...} }
-unit --> dev : 15 assertions
-
-== 2. Rendered layout, ~2 minutes ==
+== 1. Rendered tests, ~3 minutes ==
 dev -> run : node test/run.js [filter]
-loop every content case (about 30)
+loop every content case (about 40)
   run -> tmp : copy src/, write .trmnlp.yml\n(custom_fields + webhook "payment" variables)
   opt case.patch (e.g. the server's fixed-size QR svg)
     run -> tmp : rewrite shared.liquid in the copy only
   end
   run -> trmnlp : trmnlp build (cwd = copy)
-  trmnlp -> tf : run(input)
-  tf --> trmnlp : qr object
-  trmnlp -> liquid : render full / half_horizontal / half_vertical / quadrant
+  trmnlp -> liquid : render full / half_horizontal / half_vertical / quadrant\nwith the settings and webhook "payment"
   liquid --> trmnlp : _build/<view>.html
   trmnlp --> run : 4 HTML files (memoized per case)
 
@@ -45,8 +30,8 @@ loop every content case (about 30)
     run -> cache : swap trmnl.com CSS/JS and /fonts/ for local copies
     note right of run
       devices: OG, OG portrait, TRMNL X,
-      Kindle (screen~--sm), BWRY color,
-      classic fonts. A half or quarter is a
+      Kindle (screen~--sm), BWRY color, classic
+      fonts, dark mode (screen inverted, images not). A half or quarter is a
       slot inside the screen (~--full-w / ~--full-h),
       not a smaller screen.
     end note
@@ -63,16 +48,17 @@ loop every content case (about 30)
       layout chosen = expected (rule written in the test)
       QR scans to exactly the expected payload
       QR modules >= 2 px, quiet zone >= 6 px,
-      code fills >= 98 % of its box
+      code fills >= 98 % of its box, still scans in dark mode
       no text off-screen, on the QR or under the title bar
       body text fits, price rows right-aligned and full width
-      list items have a mark, title bar text / icon / hidden
+      list items have a mark, dividers, footer not cut,
+      title bar text / icon / hidden
     end note
   end
 end
-run --> dev : "107 passed, 0 failed" + screenshots
+run --> dev : "117 passed, 0 failed" + screenshots
 
-== 3. Ship ==
+== 2. Ship ==
 dev -> trmnlp : trmnlp lint, trmnlp push, then trmnlp pull
 note right of trmnlp
   the device is the last check: TRMNL's server

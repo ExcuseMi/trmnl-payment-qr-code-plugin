@@ -44,14 +44,13 @@ Keys: `payment_type` (`epc`/`text`), `epc_name`, `epc_iban`, `epc_amount` (`0` l
 
 ## How it is built
 
-`plugin/src/transform.js` runs as a serverless transform on TRMNL before every render: it picks the data source, builds the EPC payload, captions, price rows and title bar, and hands the template one `qr` object. `shared.liquid` only chooses the layout for the view and draws it.
+Everything happens in `plugin/src/shared.liquid`, which TRMNL runs on every render: it picks the data source, builds the EPC payload, captions, price rows and title bar, then chooses the layout for the view. A serverless transform was tried and dropped: on a webhook plugin it only runs when webhook data arrives, so settings changes never reached the screen.
 
 ## Development
 
 ```sh
 cd plugin && trmnlp serve   # preview
 cd test && npm install      # once; uses the Playwright Chromium in ~/.cache/ms-playwright
-node test/transform.test.js # the transform's logic, in milliseconds
 node test/run.js [filter]   # renders; needs trmnlp and zbarimg (apt install zbar-tools)
 ```
 

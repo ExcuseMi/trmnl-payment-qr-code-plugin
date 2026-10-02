@@ -86,6 +86,11 @@ const CASES = [
   // top-left corner of its box; trmnlp's filter is scalable, so force the server's variant here
   { name: 'fixed-size svg from the server', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', ALL_VIEWS], ['x', [1]]] },
   { name: 'fixed-size svg with text', fields: {}, payload: EPC_BASE, patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', [1, 2]], ['x', [1]]] },
+  // rules the serverless transform's unit tests used to cover, now checked on the render
+  { name: 'big amount', fields: { epc_amount: '1234.5' }, payload: epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), caption: 'EUR 1,234.50', matrix: [['og', [1]]] },
+  { name: 'reference limit', fields: { epc_reference: 'R'.repeat(200) }, payload: epc('Jane Doe', 'BE71096123456769', '12.50', 'R'.repeat(140)), matrix: [['og', [1]]] },
+  { name: 'link has no default caption', fields: { payment_type: 'text', qr_text: ' https://paypal.me/jane/5 ', caption: '' }, payload: 'https://paypal.me/jane/5', noCaption: true, matrix: [['og', [1]]] },
+  { name: 'title bar hidden by a "no" string', fields: {}, webhook: Object.assign({}, BASE, { show_title_bar: 'no' }), payload: EPC_BASE, noTitleBar: true, matrix: [['og', [1]]] },
   // payload rules
   { name: 'amount open', fields: { epc_amount: '' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
   { name: 'amount zero is open', fields: { epc_amount: '0' }, payload: epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), caption: 'Any amount', matrix: [['og', [1]]] },
@@ -325,6 +330,7 @@ function decode(png) {
             if (row.span < 0.9) errors.push(`price list uses only ${(row.span * 100).toFixed(0)}% of its column`);
           }
         }
+        if (c.noCaption && m.caption.length) errors.push(`expected no caption, got ${JSON.stringify(m.caption)}`);
         if (c.caption && m.layout && !m.caption.includes(c.caption)) errors.push(`caption is ${JSON.stringify(m.caption)}, expected "${c.caption}"`);
         if (c.expectFields && c.expectFields.title && !m.titleText.includes(c.expectFields.title)) errors.push(`title "${c.expectFields.title}" not shown`);
         // portrait stacks the side-by-side layout: the QR comes first, the text below it

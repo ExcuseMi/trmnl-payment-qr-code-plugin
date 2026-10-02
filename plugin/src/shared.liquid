@@ -1,17 +1,89 @@
 {% template main %}
 {%- comment -%}
-  `qr` comes from src/transform.js (serverless, runs on TRMNL before every render): it picks the data
-  source, builds the QR payload, captions, price rows and title bar. This template only lays it out.
+  Data. Liquid runs on every render, so settings changes and webhook data both show up at once.
+  One source at a time: "Plugin settings" reads the form fields and ignores webhook data; "Webhook"
+  reads only what was sent ({"merge_variables": {"payment": {...}}}), because the form fields are
+  hidden then and stale values must not leak in.
 {%- endcomment -%}
-{%- assign payload = qr.payload | default: "" -%}
-{%- assign caption = qr.caption | default: "" -%}
-{%- assign title = qr.title | default: "" -%}
-{%- assign body = qr.body | default: "" -%}
-{%- assign footer = qr.footer | default: "" -%}
-{%- assign icon = qr.icon | default: "none" -%}
-{%- assign image_url = qr.image_url | default: "" -%}
+{%- assign cf = trmnl.plugin_settings.custom_fields_values -%}
+{%- assign webhook_mode = false -%}
+{%- if cf.data_source == "webhook" -%}{%- assign webhook_mode = true -%}{%- endif -%}
+{%- if webhook_mode -%}{%- assign src = payment -%}{%- else -%}{%- assign src = cf -%}{%- endif -%}
+{%- capture nl %}
+{% endcapture -%}
+
+{%- comment -%} EPC QR (European Payments Council, version 002): an empty, zero or invalid amount lets the payer choose {%- endcomment -%}
+{%- assign payment_type = "epc" -%}
+{%- if src.payment_type == "text" -%}{%- assign payment_type = "text" -%}{%- endif -%}
+{%- assign payload = "" -%}
+{%- assign amount = "" -%}
+{%- assign amount_display = "" -%}
+{%- if payment_type == "epc" -%}
+  {%- assign beneficiary = src.epc_name | default: "" | strip | slice: 0, 70 -%}
+  {%- assign iban = src.epc_iban | default: "" | remove: " " | upcase -%}
+  {%- assign reference = src.epc_reference | default: "" | strip | slice: 0, 140 -%}
+  {%- assign amount_raw = src.epc_amount | default: "" | strip | replace: ",", "." -%}
+  {%- if amount_raw != blank -%}
+    {%- assign amount_num = amount_raw | times: 1.0 | round: 2 -%}
+    {%- if amount_num > 0 -%}
+      {%- assign amount = amount_num | number_to_currency: "", "", ".", 2 -%}
+      {%- assign amount_display = amount_num | number_to_currency: "EUR " -%}
+    {%- endif -%}
+  {%- endif -%}
+  {%- if iban != blank and beneficiary != blank -%}
+    {%- capture amount_field %}{% if amount != blank %}EUR{{ amount }}{% endif %}{% endcapture -%}
+    {%- capture payload -%}BCD{{ nl }}002{{ nl }}1{{ nl }}SCT{{ nl }}{{ nl }}{{ beneficiary }}{{ nl }}{{ iban }}{{ nl }}{{ amount_field }}{{ nl }}{{ nl }}{{ nl }}{{ reference }}{%- endcapture -%}
+  {%- endif -%}
+{%- else -%}
+  {%- assign payload = src.qr_text | default: "" | strip -%}
+{%- endif -%}
+
+{%- assign caption = src.caption | default: "" | strip -%}
+{%- if caption == blank and payment_type == "epc" and payload != blank -%}
+  {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = "Any amount" -%}{%- endif -%}
+{%- endif -%}
+{%- assign title = src.title | default: "" | strip -%}
+{%- assign footer = src.footer | default: "" | strip -%}
+{%- assign icon = src.icon | default: "none" -%}
+{%- assign image_url = src.image_url | default: "" | strip -%}
 {%- assign has_visual = false -%}
-{%- if qr.has_visual -%}{%- assign has_visual = true -%}{%- endif -%}
+{%- if image_url != blank or icon != "none" -%}{%- assign has_visual = true -%}{%- endif -%}
+{%- if webhook_mode -%}
+  {%- assign missing = "Send the payment details to the webhook" -%}
+{%- else -%}
+  {%- assign missing = "Fill in the payment details in the plugin settings" -%}
+{%- endif -%}
+
+{%- comment -%}
+  Price rows: "- Espresso | €2.40" becomes a row with the price on the right. Markdown passes inline
+  HTML through, so the row is built here and the rest of the line stays markdown.
+{%- endcomment -%}
+{%- assign body = src.body | default: "" | strip -%}
+{%- if body contains " | " -%}
+  {%- assign lines = body | split: nl -%}
+  {%- assign body = "" -%}
+  {%- for line in lines -%}
+    {%- assign l = line | rstrip -%}
+    {%- if l contains " | " -%}
+      {%- assign lead = l | slice: 0, 2 -%}
+      {%- assign rest = l -%}
+      {%- if lead == "- " or lead == "* " -%}{%- assign rest = l | slice: 2, 1000 -%}{%- else -%}{%- assign lead = "" -%}{%- endif -%}
+      {%- assign parts = rest | split: " | " -%}
+      {%- assign item = parts.first | strip -%}
+      {%- assign price = parts.last | strip -%}
+      {%- capture l -%}{{ lead }}<span class="flex flex--row flex--between gap--small w--full" data-qr-row><span>{{ item }}</span><span class="shrink-0" data-qr-price>{{ price }}</span></span>{%- endcapture -%}
+    {%- endif -%}
+    {%- assign body = body | append: l | append: nl -%}
+  {%- endfor -%}
+{%- endif -%}
+
+{%- comment -%} title bar: shown unless switched off (settings send true/false, webhooks may send false, "false" or "no") {%- endcomment -%}
+{%- assign show_title_bar = true -%}
+{%- assign stb = src.show_title_bar | downcase -%}
+{%- if src.show_title_bar == false or stb == "false" or stb == "no" or stb == "0" -%}{%- assign show_title_bar = false -%}{%- endif -%}
+{%- assign title_bar_text = src.title_bar | default: trmnl.plugin_settings.instance_name | default: "Payment QR Code" | strip -%}
+{%- assign title_bar_icon = src.title_bar_icon | default: "" | strip -%}
+
 {%- comment -%} accent classes are only switched on by the script at the bottom, on color screens {%- endcomment -%}
 {%- assign accent_text = "text--red" -%}
 {%- assign accent_pill = "bg--red text--white px--3 rounded--small" -%}
@@ -124,7 +196,7 @@
     <img class="w--full h--full" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}">
   {%- else -%}
     <div class="flex flex--row flex--center h--full w--full outline rounded p--4">
-      <span class="label text--center">{{ qr.missing | default: "The plugin data is not available" }}</span>
+      <span class="label text--center">{{ missing }}</span>
     </div>
   {%- endif -%}
 </div>
@@ -186,14 +258,14 @@
 </div>
 {%- endif -%}
 
-{%- if qr.title_bar.show != false -%}
+{%- if show_title_bar -%}
 <div class="title_bar">
-  {%- if qr.title_bar.icon_url != blank -%}
-  <img class="image" src="{{ qr.title_bar.icon_url }}" alt="">
+  {%- if title_bar_icon != blank -%}
+  <img class="image" src="{{ title_bar_icon }}" alt="">
   {%- else -%}
   <svg class="image" width="24" height="24" viewBox="0 0 64 64"><rect x="4" y="4" width="22" height="22" rx="4"/><rect x="10" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="38" y="4" width="22" height="22" rx="4"/><rect x="44" y="10" width="10" height="10" rx="2" fill="#fff"/><rect x="4" y="38" width="22" height="22" rx="4"/><rect x="10" y="44" width="10" height="10" rx="2" fill="#fff"/><circle cx="49" cy="49" r="13"/><path d="M49 42v14M53 45.5c-1-1.2-2.4-1.8-4-1.8-2.2 0-3.8 1.1-3.8 2.8 0 4 7.8 2 7.8 6 0 1.7-1.7 2.9-4 2.9-1.8 0-3.3-.7-4.3-2" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
   {%- endif -%}
-  <span class="title">{{ qr.title_bar.text | default: trmnl.plugin_settings.instance_name }}</span>
+  <span class="title">{{ title_bar_text }}</span>
 </div>
 {%- endif -%}
 <script>

@@ -391,9 +391,6 @@ segment(document.querySelector('.md-head .seg'), (b) => {
 
 // ---- device preview: the plugin's real template, rendered with liquidjs against TRMNL's stylesheet
 const TEMPLATE_URL = 'https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/plugin/src/shared.liquid';
-// the plugin's serverless transform turns the webhook data into the template's `qr` object
-const TRANSFORM_URL = 'https://raw.githubusercontent.com/ExcuseMi/trmnl-payment-qr-code-plugin/main/plugin/src/transform.js';
-let transform = null;
 const FRAMEWORK_CSS = 'https://trmnl.com/css/3.4.0/plugins.min.css';
 const DEVICES = {
   og: { w: 800, h: 480, classes: 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-trmnl' },
@@ -410,10 +407,7 @@ function utf8(s) { return unescape(encodeURIComponent(s)); }
 async function initRenderer() {
   if (!window.liquidjs || !window.qrcode) { $('renderState').textContent = 'preview needs an internet connection'; return; }
   try {
-    const [src, tsrc] = await Promise.all([TEMPLATE_URL, TRANSFORM_URL].map((u) => fetch(u, { cache: 'no-cache' }).then((r) => r.text())));
-    const mod = { exports: {} };
-    new Function('module', tsrc)(mod);
-    transform = mod.exports;
+    const src = await (await fetch(TEMPLATE_URL, { cache: 'no-cache' })).text();
     template = src.replace(/\{%-?\s*template\s+main\s*-?%\}/, '').replace(/\{%-?\s*endtemplate\s*-?%\}/, '');
     engine = new liquidjs.Liquid();
     engine.registerFilter('qr_code', (data, size, level) => {
@@ -425,6 +419,7 @@ async function initRenderer() {
     // TRMNL (Shopify Liquid) divides integers as integers; liquidjs would return a float
     engine.registerFilter('divided_by', (a, b) => Number.isInteger(a) && Number.isInteger(b) ? Math.floor(a / b) : a / b);
     engine.registerFilter('markdown_to_html', (md) => markdownHtml(md));
+    engine.registerFilter('base64_encode', (v) => btoa(utf8(String(v == null ? '' : v))));
     engine.registerFilter('number_to_currency', (n, unit = '$', delim = ',', sep = '.', prec = 2) => {
       const [i, f] = Number(n).toFixed(prec).split('.');
       return unit + i.replace(/\B(?=(\d{3})+(?!\d))/g, delim) + (prec > 0 ? sep + f : '');
@@ -468,14 +463,13 @@ window.addEventListener('resize', fitFrame);
 function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderNow, 250); }
 
 async function renderNow() {
-  if (!engine || !transform || !frame || !frame.contentDocument) return;
+  if (!engine || !frame || !frame.contentDocument) return;
   const target = frame.contentDocument.getElementById('v');
   if (!target) return;
   const seq = ++renderSeq;
   const p = readForm();
   const trmnl = { plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } };
-  const { qr } = await transform.run({ trmnl, payment: p });
-  const ctx = { trmnl, qr, view: view };
+  const ctx = { trmnl, payment: p, view: view };
   try {
     const html = await engine.parseAndRender(template, ctx);
     if (seq !== renderSeq) return;
