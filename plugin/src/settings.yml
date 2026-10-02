@@ -37,7 +37,7 @@ custom_fields:
   field_type: author_bio
   category: finance,personal
   help_text: TRMNL X Ready
-  description: 'Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.'
+  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
 - keyname: payment_type
   name: Payment Type
@@ -71,6 +71,7 @@ custom_fields:
 - keyname: epc_iban
   name: IBAN
   field_type: string
+  description: The account to pay into. Spaces are fine.
   placeholder: BE71 0961 2345 6769
   optional: true
 - keyname: epc_amount
@@ -94,6 +95,7 @@ custom_fields:
 - keyname: title
   name: Title
   field_type: string
+  description: Large text next to or above the QR code.
   placeholder: Buy me a coffee
   optional: true
 - keyname: caption
@@ -119,11 +121,13 @@ custom_fields:
 - keyname: footer
   name: Footer
   field_type: string
+  description: One short line at the bottom, like a thank you.
   placeholder: Thank you!
   optional: true
 - keyname: icon
   name: Icon
   field_type: select
+  description: Shown next to the title. Red on color screens.
   options:
   - None: none
   - Heart: heart
@@ -148,5 +152,5 @@ custom_fields:
   placeholder: https://example.com/logo.png
   optional: true
 name: Payment QR Code
-description:
+description: Payment QR code with your own text
 refresh_interval: 1440
