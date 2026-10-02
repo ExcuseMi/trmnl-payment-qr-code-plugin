@@ -85,6 +85,11 @@ const CASES = [
   // TRMNL's server returned the code at a fixed pixel size (no viewBox), which drew it small in the
   // top-left corner of its box; trmnlp's filter is scalable, so force the server's variant here
   { name: 'fixed-size svg from the server', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', ALL_VIEWS], ['x', [1]]] },
+  // TRMNL's server returned width/height on the svg (drawn small, see above); as an <img> the svg
+  // is strict XML, where a second width attribute breaks the image, so both variants must work
+  { name: 'server svg with viewBox and size', fields: {}, payload: EPC_BASE, patch: (src) => src.replace("{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}", "{%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' | replace_first: '<svg ', '<svg width=\"300\" height=\"300\" ' -%}"), fillsBox: true, matrix: [['og', [1, 4]], ['og_dark', [1]]] },
+  // an image that cannot load falls back to the same code inline
+  { name: 'image fallback', fields: {}, payload: EPC_BASE, fallback: true, patch: (src) => src.replace('src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}"', 'src="data:image/svg+xml;base64,broken"'), matrix: [['og', [1, 4]]] },
   { name: 'fixed-size svg with text', fields: {}, payload: EPC_BASE, patch: (src) => src.replace('qr_code: 11, level, "responsive"', 'qr_code: 11, level, "fixed"'), fillsBox: true, matrix: [['og', [1, 2]], ['x', [1]]] },
   // rules the serverless transform's unit tests used to cover, now checked on the render
   { name: 'big amount', fields: { epc_amount: '1234.5' }, payload: epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), caption: 'EUR 1,234.50', matrix: [['og', [1]]] },
@@ -180,8 +185,9 @@ function measure() {
   const r = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
   const view = document.querySelector('.view');
   const layout = document.querySelector('[data-qr-layout]');
-  const img = document.querySelector('img[data-qr-img]');
-  const out = { layout: layout && layout.dataset.qrLayout, view: r(view), titleBar: null, qr: null, texts: [], bodyOverflow: false };
+  const fb = document.querySelector('[data-qr-fallback]:not(.hidden) svg');
+  const img = fb || document.querySelector('img[data-qr-img]');
+  const out = { fallback: !!fb, layout: layout && layout.dataset.qrLayout, view: r(view), titleBar: null, qr: null, texts: [], bodyOverflow: false };
   const tb = view.querySelector('.title_bar');
   if (tb) { out.titleBar = r(tb); out.titleBarText = tb.textContent.trim(); out.titleBarImg = !!tb.querySelector('img'); }
   if (img) {
@@ -191,9 +197,12 @@ function measure() {
     const side = Math.min(box.w, box.h);
     const x = box.x + (box.w - side) / 2, y = box.y + (box.h - side) / 2;
     out.image = { x, y, w: side, h: side, r: x + side, b: y + side };
-    out.qr = { x: x + side * 0.08, y: y + side * 0.08, w: side * 0.84, h: side * 0.84, modules: Number(img.dataset.qrModules) };
+    const modules = fb ? fb.viewBox.baseVal.width / 11 : Number(img.dataset.qrModules);
+    const inset = fb ? 0 : 0.08;
+    out.qr = { x: x + side * inset, y: y + side * inset, w: side * (1 - 2 * inset), h: side * (1 - 2 * inset), modules };
     out.qr.r = out.qr.x + out.qr.w; out.qr.b = out.qr.y + out.qr.h;
-    out.quiet = side * 0.08;
+    // the fallback's quiet zone is its box padding
+    out.quiet = fb ? (fb.getBoundingClientRect().left - fb.parentElement.getBoundingClientRect().left) : side * 0.08;
   }
   const qbox = document.querySelector('[data-qr-box]');
   if (img && qbox) {
@@ -312,10 +321,13 @@ function decode(png) {
         // the code must fill its box whatever size the filter drew it at
         // a quiet zone: white space between the code and anything else, scanners need it
         if (m.qr && m.quiet !== undefined && m.quiet < 6) errors.push(`QR quiet zone is only ${m.quiet.toFixed(0)}px`);
-        if (m.qr && m.fill !== undefined && m.fill < 0.98) errors.push(`QR fills only ${(m.fill * 100).toFixed(0)}% of its box`);
+        // (the inline fallback keeps its quiet zone as padding, so it is exempt)
+        if (m.qr && !m.fallback && m.fill !== undefined && m.fill < 0.98) errors.push(`QR fills only ${(m.fill * 100).toFixed(0)}% of its box`);
         if (c.noTitleBar && m.titleBar) errors.push('title bar shown, expected none');
         if (!c.noTitleBar && !m.titleBar) errors.push('no title bar');
         if (c.titleBarIcon && !m.titleBarImg) errors.push('title bar icon not shown');
+        if (c.fallback && !m.fallback) errors.push('a broken image did not switch to the inline fallback');
+        if (!c.fallback && m.fallback) errors.push('the inline fallback shows although the image is fine');
         if (c.dividers && m.dividers !== c.dividers) errors.push(`${m.dividers} dividers drawn, expected ${c.dividers}`);
         if (m.footerText !== undefined && m.footerText !== m.footerWant) errors.push(`footer reads "${m.footerText}", expected "${m.footerWant}"`);
         if (c.titleBar && m.titleBarText !== c.titleBar) errors.push(`title bar says "${m.titleBarText}", expected "${c.titleBar}"`);

@@ -182,18 +182,41 @@
       returns a scalable one, so normalize to a viewBox first.
     {%- endcomment -%}
     {%- capture qr_svg -%}{{ payload | qr_code: 11, level, "responsive" }}{%- endcapture -%}
+    {%- comment -%}
+      Rebuild the svg's opening tag: drop any width/height the filter set (TRMNL's server sets them,
+      trmnlp does not) and keep or add the viewBox. Inside an <img> the svg is strict XML, so a
+      second width attribute would break the whole image.
+    {%- endcomment -%}
     {%- assign qr_svg = qr_svg | split: '<svg' | last | prepend: '<svg' -%}
-    {%- if qr_svg contains "viewBox" -%}
+    {%- assign qr_open = qr_svg | split: '>' | first -%}
+    {%- assign qr_rest = qr_svg | remove_first: qr_open -%}
+    {%- assign qr_tokens = qr_open | split: ' ' -%}
+    {%- assign qr_open = "" -%}
+    {%- assign qr_px = "" -%}
+    {%- assign has_viewbox = false -%}
+    {%- for t in qr_tokens -%}
+      {%- assign t6 = t | slice: 0, 6 -%}
+      {%- assign t7 = t | slice: 0, 7 -%}
+      {%- assign t8 = t | slice: 0, 8 -%}
+      {%- if t6 == 'width=' -%}
+        {%- assign qr_px = t | remove: 'width=' | remove: '"' | remove: "'" -%}
+      {%- elsif t7 == 'height=' -%}
+      {%- else -%}
+        {%- if t8 == 'viewBox=' -%}{%- assign has_viewbox = true -%}{%- endif -%}
+        {%- assign qr_open = qr_open | append: t | append: ' ' -%}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if has_viewbox -%}
       {%- assign qr_px = qr_svg | split: 'viewBox="0 0 ' | last | split: ' ' | first -%}
     {%- else -%}
-      {%- assign qr_px = qr_svg | split: 'width="' | slice: 1, 1 | first | split: '"' | first -%}
-      {%- assign w_attr = 'width="' | append: qr_px | append: '"' -%}
-      {%- assign h_attr = 'height="' | append: qr_px | append: '"' -%}
-      {%- assign qr_svg = qr_svg | replace_first: w_attr, '' | replace_first: h_attr, '' -%}
-      {%- assign qr_svg = qr_svg | replace_first: '<svg ', '<svg viewBox="0 0 QRPX QRPX" ' | replace: "QRPX", qr_px -%}
+      {%- assign qr_open = qr_open | append: 'viewBox="0 0 ' | append: qr_px | append: ' ' | append: qr_px | append: '"' -%}
     {%- endif -%}
+    {%- assign qr_svg = qr_open | strip | append: qr_rest -%}
     {%- capture qr_img -%}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" shape-rendering="crispEdges"><rect width="100" height="100" fill="#fff"/>{{ qr_svg | replace_first: '<svg ', '<svg x="8" y="8" width="84" height="84" ' }}</svg>{%- endcapture -%}
-    <img class="w--full h--full" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}">
+    <img class="w--full h--full" src="data:image/svg+xml;base64,{{ qr_img | base64_encode }}" alt="Payment QR code" data-qr-img data-qr-modules="{{ qr_px | divided_by: 11 }}"
+      onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')">
+    {%- comment -%} if the image cannot load, the same code inline: better inverted in dark mode than missing {%- endcomment -%}
+    <div class="hidden w--full h--full bg--white p--2" data-qr-fallback>{{ qr_svg | replace_first: '<svg ', '<svg width="100%" height="100%" ' }}</div>
   {%- else -%}
     <div class="flex flex--row flex--center h--full w--full outline rounded p--4">
       <span class="label text--center">{{ missing }}</span>
