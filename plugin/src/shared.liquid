@@ -244,7 +244,8 @@
 {%- if title != blank or has_visual -%}
 <div class="flex flex--row flex--center-y gap--small{% if mode == "beside" %} flex--left{% endif %}">
   {%- if has_visual -%}<div class="shrink-0 h--10 w--10" data-accent="{{ accent_text }}">{{ visual }}</div>{%- endif -%}
-  {%- if title != blank -%}<span class="title {{ title_size }}" data-clamp="2">{{ title }}</span>{%- endif -%}
+  {%- comment -%} w--min-0: a flex item will not shrink below its longest word otherwise, and runs out of its column {%- endcomment -%}
+  {%- if title != blank -%}<span class="title {{ title_size }} w--min-0" data-clamp="2">{{ title }}</span>{%- endif -%}
 </div>
 {%- endif -%}
 {%- endcapture -%}
