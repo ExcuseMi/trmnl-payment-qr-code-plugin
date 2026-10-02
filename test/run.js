@@ -96,12 +96,15 @@ const CASES = [
   { name: 'title bar text', fields: { title_bar: 'Pay at the counter' }, payload: EPC_BASE, titleBar: 'Pay at the counter', matrix: [['og', [1, 4]]] },
   { name: 'title bar from webhook', fields: { title_bar: 'From settings' }, webhook: { title_bar: 'From webhook' }, payload: EPC_BASE, titleBar: 'From webhook', matrix: [['og', [1]]] },
   { name: 'title bar defaults to plugin name', fields: {}, payload: EPC_BASE, titleBar: 'Payment QR Code', matrix: [['og', [1]]] },
+  { name: 'settings ignore webhook data', fields: { data_source: 'settings' }, webhook: { title: 'From webhook', epc_amount: '42' }, payload: EPC_BASE, expectFields: { title: 'Buy me a coffee' }, matrix: [['og', [1]]] },
   { name: 'webhook switches to link', fields: {}, webhook: { payment_type: 'text', qr_text: 'https://revolut.me/jane' }, payload: 'https://revolut.me/jane', matrix: [['og', [1]]] },
 ];
 
 // ---------------------------------------------------------------- build (one trmnlp build per content)
 const builds = new Map();
 function build(fields, webhook) {
+  // webhook data only counts when the data source says so
+  if (webhook && !fields.data_source) fields = Object.assign({}, fields, { data_source: 'webhook' });
   const key = JSON.stringify([fields, webhook || null]);
   if (builds.has(key)) return builds.get(key);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qrplugin-'));

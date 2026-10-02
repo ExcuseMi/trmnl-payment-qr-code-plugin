@@ -109,7 +109,8 @@
     <section class="card" id="connectCard">
       <div class="card-head"><span class="step">1</span><h2>Connect your plugin</h2></div>
       <div class="card-body">
-        <label for="webhook">Webhook URL <small>from the plugin settings, kept in this browser only</small></label>
+        <p class="hint" style="margin:12px 0 0">In the plugin settings, set <strong>Data Source</strong> to <strong>Webhook</strong> and copy the Webhook URL shown there.</p>
+        <label for="webhook">Webhook URL <small>kept in this browser only</small></label>
         <input id="webhook" placeholder="https://trmnl.com/api/custom_plugins/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
         <div class="hint" id="webhookHint">Anyone with this URL can change your QR code, so keep it private.</div>
         <div class="buttons">

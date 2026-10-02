@@ -5,6 +5,8 @@
   settings). Each one overrides its setting; a missing or empty key falls back to the setting.
 {%- endcomment -%}
 {%- assign wh = payment -%}
+{%- comment -%} with "Plugin settings" as the data source, webhook data is ignored {%- endcomment -%}
+{%- if cf.data_source != "webhook" -%}{%- assign wh = nil -%}{%- endif -%}
 {%- capture nl %}
 {% endcapture -%}
 

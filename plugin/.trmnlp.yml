@@ -4,6 +4,7 @@ watch:
   - src
 
 custom_fields:
+  data_source: settings
   payment_type: epc
   epc_name: Jane Doe
   epc_iban: BE71 0961 2345 6769

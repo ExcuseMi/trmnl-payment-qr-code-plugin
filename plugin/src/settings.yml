@@ -37,8 +37,25 @@ custom_fields:
   field_type: author_bio
   category: finance,personal
   help_text: TRMNL X Ready
-  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> everything below can be overridden from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.
+  description: Show a scannable payment QR code with your own text.<br /><br /><strong>Payment types:</strong><br /> ● SEPA transfer (EPC QR, scanned by most European banking apps)<br /> ● Any payment link or text (PayPal.me, Payconiq, Tikkie, Revolut, Stripe, Bitcoin, ...)<br /><br />The layout adapts to your text, the screen and the mashup size. Markdown text, an icon or your own image.<br /><br /><strong>Optional webhook:</strong> set Data Source to Webhook and everything below can be overridden from the <a href='https://excusemi.github.io/trmnl-payment-qr-code-plugin/'>web editor</a> (or any script), e.g. to change the amount or reference per payment. Clear it to fall back to these settings.
   github_url: https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin
+- keyname: data_source
+  name: Data Source
+  field_type: select
+  description: Where the screen gets its content. With a webhook you can change the payment (amount, reference, text) without opening these settings; anything the webhook leaves out comes from the fields below.
+  options:
+  - Plugin settings: settings
+  - Webhook: webhook
+  default: settings
+  conditional_validation:
+  - when: settings
+    hidden:
+    - webhook_url
+- keyname: webhook_url
+  name: Webhook URL
+  field_type: copyable_webhook_url
+  description: 'Copy this URL into the <a href=''https://excusemi.github.io/trmnl-payment-qr-code-plugin/''>web editor</a> to change the payment from your phone or computer, or POST to it from a script (see the <a href=''https://github.com/ExcuseMi/trmnl-payment-qr-code-plugin#optional-webhook''>README</a>). Keep it private: anyone with this URL can change your QR code.'
+  optional: true
 - keyname: payment_type
   name: Payment Type
   field_type: select
