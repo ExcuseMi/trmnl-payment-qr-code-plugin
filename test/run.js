@@ -31,6 +31,8 @@ const DEVICES = {
   og_portrait: { w: 480, h: 800, classes: OG + ' screen--portrait' },
   x: { w: 1872, h: 1404, classes: 'screen--v2 screen--lg screen--4bit screen--density-2x screen--fonts-trmnl' },
   sm: { w: 1400, h: 840, classes: 'screen--amazon_kindle_2024 screen--sm screen--density-2x screen--4bit screen--fonts-trmnl' },
+  // TRMNL's dark mode inverts the whole screen except images
+  og_dark: { w: 800, h: 480, classes: OG + ' screen--dark-mode', css: '.screen{filter:invert(1)} .screen img{filter:invert(1)}' },
   bwry: { w: 800, h: 480, classes: 'screen--og screen--md screen--density-1x screen--color-4bwry screen--fonts-trmnl' },
   classic: { w: 800, h: 480, classes: 'screen--og screen--md screen--1bit screen--density-1x screen--fonts-classic' },
 };
@@ -62,7 +64,7 @@ function expectedLayout(c, view) {
   return 'centered';
 }
 
-const FULL_MATRIX = [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1, 2]], ['sm', [1, 3]], ['bwry', [1]], ['classic', [1]]];
+const FULL_MATRIX = [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1, 2]], ['sm', [1, 3]], ['bwry', [1]], ['classic', [1]], ['og_dark', [1, 4]]];
 const CASES = [
   { name: 'everything', fields: {}, payload: EPC_BASE, matrix: FULL_MATRIX },
   { name: 'no text', fields: { body: '' }, payload: EPC_BASE, matrix: FULL_MATRIX },
@@ -75,6 +77,8 @@ const CASES = [
   // a long payload makes a dense code: it must still scan in the smallest slot
   { name: 'dense link', fields: { payment_type: 'text', qr_text: 'https://example.com/pay?' + 'invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120) }, payload: 'https://example.com/pay?invoice=2026-0042&customer=jane.doe&amount=12.50&currency=EUR&ref=' + 'x'.repeat(120), matrix: [['og', ALL_VIEWS]] },
   // the coffee shop example from assets/examples: price rows, a logo image, payer picks the amount
+  // a markdown --- becomes the framework's divider; dividers sit between QR, title, text and footer
+  { name: 'dividers', fields: { body: '## Coffee\n\n- Espresso | €2.40\n\n---\n\n## Tea\n\n- Green tea | €2.20' }, payload: EPC_BASE, dividers: 4, matrix: [['og', [1]], ['og_dark', [1]]] },
   { name: 'price list', fields: {}, webhook: Object.assign({}, require('../assets/examples/coffee-shop.json').merge_variables.payment, { image_url: IMG }), payload: epc('Northbean Coffee', 'BE71096123456769', '', 'Northbean Coffee'), caption: 'Scan, pay, enjoy', expectFields: { title: 'Northbean Coffee' }, priceRows: true, matrix: [['og', ALL_VIEWS], ['og_portrait', [1]], ['x', [1]], ['sm', [1]], ['bwry', [1]]] },
   // a real instance: tiny payload (a short, low-version code) and nothing but the QR and its caption
   { name: 'short payload alone', fields: { epc_name: 'X', epc_iban: 'X', epc_amount: '', epc_reference: '', title: '', body: '', footer: '', icon: 'none' }, payload: epc('X', 'X', '', ''), caption: 'Any amount', matrix: [['og', ALL_VIEWS], ['x', [1]], ['og_portrait', [1]]] },
@@ -171,27 +175,26 @@ function measure() {
   const r = (el) => { const b = el.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height, r: b.right, b: b.bottom }; };
   const view = document.querySelector('.view');
   const layout = document.querySelector('[data-qr-layout]');
-  const svg = document.querySelector('svg.qr-code');
+  const img = document.querySelector('img[data-qr-img]');
   const out = { layout: layout && layout.dataset.qrLayout, view: r(view), titleBar: null, qr: null, texts: [], bodyOverflow: false };
   const tb = view.querySelector('.title_bar');
   if (tb) { out.titleBar = r(tb); out.titleBarText = tb.textContent.trim(); out.titleBarImg = !!tb.querySelector('img'); }
-  if (svg) {
-    // the code is drawn square inside the svg box (preserveAspectRatio meet)
-    const box = r(svg);
+  if (img) {
+    // the image is square (object-fit default keeps the svg's 1:1 inside); the code itself is the
+    // middle 84 %, the outer 8 % on each side is the quiet zone drawn into the image
+    const box = r(img);
     const side = Math.min(box.w, box.h);
-    const vb = svg.viewBox.baseVal;
-    out.qr = { x: box.x + (box.w - side) / 2, y: box.y + (box.h - side) / 2, w: side, h: side, modules: vb.width / 11 };
-    out.qr.r = out.qr.x + side; out.qr.b = out.qr.y + side;
+    const x = box.x + (box.w - side) / 2, y = box.y + (box.h - side) / 2;
+    out.image = { x, y, w: side, h: side, r: x + side, b: y + side };
+    out.qr = { x: x + side * 0.08, y: y + side * 0.08, w: side * 0.84, h: side * 0.84, modules: Number(img.dataset.qrModules) };
+    out.qr.r = out.qr.x + out.qr.w; out.qr.b = out.qr.y + out.qr.h;
+    out.quiet = side * 0.08;
   }
   const qbox = document.querySelector('[data-qr-box]');
-  if (svg && qbox) {
-    // measured against the box's content area: its padding is the quiet zone
-    const b = qbox.getBoundingClientRect(), s = svg.getBoundingClientRect(), cs = getComputedStyle(qbox);
-    const zoom = b.width / qbox.offsetWidth || 1;
-    const padX = (parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) * zoom;
-    const padY = (parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)) * zoom;
-    out.fill = Math.min(s.width / (b.width - padX), s.height / (b.height - padY));
-    out.quiet = Math.min(s.left - b.left, b.right - s.right, s.top - b.top, b.bottom - s.bottom);
+  if (img && qbox) {
+    const b = qbox.getBoundingClientRect();
+    // the code fills the box's smaller side (a portrait box is taller than it is wide)
+    out.fill = out.image.w / Math.min(b.width, b.height);
   }
   layout.querySelectorAll('.title, .label, [data-qr-body], [data-qr-box] .label').forEach((el) => {
     if (el.closest('.title_bar')) return;
@@ -212,6 +215,15 @@ function measure() {
   out.items = Array.from(layout.querySelectorAll('[data-qr-body] li')).filter((li) => li.getBoundingClientRect().height > 0)
     .map((li) => ({ marked: !!li.querySelector('[data-qr-mark]') }));
   out.placeholder = !!document.querySelector('[data-qr-box] .label');
+  out.dividers = Array.from(layout.querySelectorAll('.divider, .divider--v')).filter((d) => {
+    const b = d.getBoundingClientRect(); return b.width > 0 && b.height > 0;
+  }).length;
+  const foot = Array.from(layout.querySelectorAll('.label')).find((l) => !l.closest('[data-qr-box]') && !l.dataset.accent);
+  if (foot) {
+    out.footerWant = foot.textContent.trim();
+    // what is visible: a clamp or ellipsis shows as overflowing text
+    out.footerText = foot.scrollWidth > foot.clientWidth + 1 || /\u2026|\.\.\.$/.test(foot.innerText) ? foot.innerText.trim() : out.footerWant;
+  }
   out.caption = Array.from(layout.querySelectorAll('[data-accent^="bg--"]')).map((e) => e.textContent.trim());
   out.bodyText = Array.from(layout.querySelectorAll('[data-qr-body]')).map((e) => e.textContent.trim()).join(' ');
   out.titleText = Array.from(layout.querySelectorAll('.title:not([data-accent])')).map((e) => e.textContent.trim()).join(' ');
@@ -248,6 +260,7 @@ function decode(png) {
         const [, fw, fh] = VIEWS[view];
         let html = localize(build(Object.assign({}, BASE, c.fields), c.webhook, c.patch)[view]);
         html = html.replace(/class="screen([^"]*)"/, (m, rest) => `class="screen${rest} ${d.classes}"`);
+        if (d.css) html = html.replace('</head>', `<style>${d.css}</style></head>`);
         if (view !== 1) html = html.replace('</head>', `<style>.screen{--full-w:calc(var(--screen-w) * ${fw}) !important;--full-h:calc(var(--screen-h) * ${fh}) !important}</style></head>`);
         const file = path.join(os.tmpdir(), `qr-test-${process.pid}.html`);
         fs.writeFileSync(file, html);
@@ -298,6 +311,8 @@ function decode(png) {
         if (c.noTitleBar && m.titleBar) errors.push('title bar shown, expected none');
         if (!c.noTitleBar && !m.titleBar) errors.push('no title bar');
         if (c.titleBarIcon && !m.titleBarImg) errors.push('title bar icon not shown');
+        if (c.dividers && m.dividers !== c.dividers) errors.push(`${m.dividers} dividers drawn, expected ${c.dividers}`);
+        if (m.footerText !== undefined && m.footerText !== m.footerWant) errors.push(`footer reads "${m.footerText}", expected "${m.footerWant}"`);
         if (c.titleBar && m.titleBarText !== c.titleBar) errors.push(`title bar says "${m.titleBarText}", expected "${c.titleBar}"`);
         // lists get a mark (bullet or number) in front of every visible item
         if (m.items.some((i) => !i.marked)) errors.push('a list item has no mark');

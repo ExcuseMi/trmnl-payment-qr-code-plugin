@@ -91,8 +91,12 @@ function build(input) {
   };
 }
 
+// TRMNL stores what run() returns in place of the webhook data, so hand the sent `payment` back
+// unchanged: the web editor reads it to load what is on the screen now
 async function run(input) {
-  return { qr: build(input || {}) };
+  const out = { qr: build(input || {}) };
+  if (input && input.payment && typeof input.payment === 'object') out.payment = input.payment;
+  return out;
 }
 
 // lets test/transform.test.js load this file in plain Node; TRMNL only calls run()

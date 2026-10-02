@@ -95,6 +95,12 @@ const JANE = { epc_name: 'Jane', epc_iban: 'be71 0961 2345 6769' };
     assert.strictEqual((await qrOf(settings(Object.assign({ icon: 'coffee' }, JANE)))).has_visual, true);
     assert.strictEqual((await qrOf(settings(Object.assign({ image_url: 'https://x/l.png' }, JANE)))).has_visual, true);
   });
+  await test('passes the webhook data through, so the editor can load it back', async () => {
+    const sent = { title: 'Fresh', epc_amount: '2.40' };
+    const out = await run(settings({ data_source: 'webhook' }, { payment: sent }));
+    assert.deepStrictEqual(out.payment, sent);
+    assert.strictEqual('payment' in (await run(settings(JANE))), false);
+  });
   await test('survives an empty input', async () => {
     const q = (await run(undefined)).qr;
     assert.strictEqual(q.payload, '');

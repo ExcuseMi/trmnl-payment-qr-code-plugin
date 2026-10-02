@@ -514,7 +514,12 @@ async function call(method, body) {
 }
 
 function showCurrent(data) {
-  const p = data && data.merge_variables && data.merge_variables.payment;
+  const mv = (data && data.merge_variables) || {};
+  const p = mv.payment;
+  if (!p && mv.qr) {
+    $('current').textContent = 'TRMNL has rendered data but not the data that was sent (it was stored by an older version of the plugin). Send it again from here to fix that.';
+    return {};
+  }
   if (!p || !Object.keys(p).filter((k) => k !== 'updated_at').length) {
     $('current').textContent = 'Nothing sent yet, or cleared: the device asks for payment details.';
     return p || {};
