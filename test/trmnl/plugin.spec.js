@@ -145,21 +145,14 @@ for (const s of matrix({ device: DEVICES, view: VIEWS })) {
 }
 
 // ---------------------------------------------------------------- dark mode and color
-// TRMNL's dark mode inverts the screen except images, so the plain inline code comes out white on
-// black. Inverted QR codes are valid and scan on phones (checked with banking apps), so the test
-// flips the picture back and decodes that. zbar, like some scanners, only reads dark on light.
-async function invertedQr(screen) {
-  const png = await screen.png({ dither: false });
-  const d = png.png.data;
-  for (let i = 0; i < d.length; i += 4) { d[i] = 255 - d[i]; d[i + 1] = 255 - d[i + 1]; d[i + 2] = 255 - d[i + 2]; }
-  return png.decodeQr()[0] ?? null;
-}
+// Framework 3's dark mode remaps the framework's colours; the inline code keeps its own black on
+// white, so the box behind it (the quiet zone) must stay white too or scanners lose the code.
 for (const s of matrix({ device: ['og_plus', 'v2'], view: ['full', 'quadrant'], darkMode: [true] })) {
-  test(`dark mode: an inverted code that scans · ${s.label}`, async ({ trmnl }) => {
+  test(`dark mode: the code keeps a white quiet zone and scans · ${s.label}`, async ({ trmnl }) => {
     const screen = await trmnl.render({ ...s, fields: BASE });
     expect(screen).toRenderCleanly();
     await expect(screen).toHaveNoOverflow();
-    expect(await invertedQr(screen)).toBe(JANE);
+    await expect(screen).toHaveQr(JANE);
   });
 }
 test('color panel: red accent on the caption', async ({ trmnl }) => {

@@ -200,6 +200,9 @@
   {%- if footer != blank -%}{%- assign qr_hp = qr_hp | minus: 6 -%}{%- endif -%}
   {%- assign qr_dims = qr_dims | append: " portrait:h--[" | append: qr_hp | append: "cqh] portrait:w--[" | append: qr_hp | append: "cqh]" -%}
 {%- endif -%}
+{%- comment -%} Framework 3 dark mode remaps colours but not the code's own black on white, so the padding
+  (its quiet zone) stays white: bg--black is white in dark mode. {%- endcomment -%}
+{%- if payload != blank -%}{%- assign qr_dims = qr_dims | append: " bg--white dark:bg--black" -%}{%- endif -%}
 
 {%- comment -%} ---------- icon set (Lucide, ISC licence) ---------- {%- endcomment -%}
 {%- capture icon_paths -%}
