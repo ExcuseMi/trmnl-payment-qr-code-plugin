@@ -31,6 +31,19 @@ function expectedLayout(c, view) {
 // checks every render shares: layout, QR, nothing overflowing or on the code, quiet zone, size
 async function checkScreen(screen, { content, view, payload }) {
   expect(screen).toRenderCleanly();
+  // text stays inside the layout's padded area, not only inside the view: a long title once ran out
+  // of its column, and the column grew along with it, so the layout edge is what to compare with
+  const outside = await screen.page.evaluate(() => {
+    const layout = document.querySelector('[data-qr-layout]');
+    const cs = getComputedStyle(layout), l = layout.getBoundingClientRect();
+    const zoom = l.width / layout.offsetWidth || 1;
+    const right = l.right - parseFloat(cs.paddingRight) * zoom;
+    return Array.from(layout.querySelectorAll('.title, .label, [data-qr-body]'))
+      // past the layout edge, or wider than its own box (a word that does not fit spills out of it)
+      .filter((t) => { const r = t.getBoundingClientRect(); return r.width > 0 && (r.right > right + 1 || t.scrollWidth > t.clientWidth + 1); })
+      .map((t) => t.textContent.trim().slice(0, 30));
+  });
+  expect(outside, 'text spilling out of its box or the layout').toEqual([]);
   await expect(screen.locator('[data-qr-layout]')).toHaveAttribute('data-qr-layout', expectedLayout(content, view));
   await expect(screen).toHaveQr(payload);
   await expect(screen).toHaveNoOverflow();

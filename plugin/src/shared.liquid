@@ -344,7 +344,21 @@
     content.querySelectorAll('ul, ol').forEach(function (list) { list.style.paddingLeft = '0'; });
   }
 
+  // a title's longest word can be wider than its column (a long name next to the logo in a quarter
+  // view): shrink that title's font until its text fits its box
+  function fitTitles() {
+    view.querySelectorAll('[data-qr-layout] .title').forEach(function (t) {
+      t.style.fontSize = '';
+      var size = parseFloat(getComputedStyle(t).fontSize);
+      while (t.scrollWidth > t.clientWidth + 1 && size > 10) {
+        size -= 1;
+        t.style.fontSize = size + 'px';
+      }
+    });
+  }
+
   function fit() {
+    fitTitles();
     view.querySelectorAll('[data-qr-body]').forEach(function (box) {
       var content = box.firstElementChild;
       box.style.overflow = 'hidden';
