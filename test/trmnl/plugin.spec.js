@@ -38,7 +38,7 @@ async function checkScreen(screen, { content, view, payload }) {
     const cs = getComputedStyle(layout), l = layout.getBoundingClientRect();
     const zoom = l.width / layout.offsetWidth || 1;
     const right = l.right - parseFloat(cs.paddingRight) * zoom;
-    return Array.from(layout.querySelectorAll('.title, .label, [data-qr-body]'))
+    return Array.from(layout.querySelectorAll('.title, .label, [data-qr-fit], [data-qr-body]'))
       // past the layout edge, or wider than its own box (a word that does not fit spills out of it)
       .filter((t) => { const r = t.getBoundingClientRect(); return r.width > 0 && (r.right > right + 1 || t.scrollWidth > t.clientWidth + 1); })
       .map((t) => t.textContent.trim().slice(0, 30));
@@ -303,7 +303,14 @@ test('dividers between QR and text, under the title, above the footer, and for m
   let screen = await trmnl.render({ fields: BASE });
   await expect(screen.locator('[data-qr-layout] .divider:visible, [data-qr-layout] .divider--v:visible')).toHaveCount(3);
   screen = await trmnl.render({ fields: { ...BASE, body: '## Coffee\n\n- Espresso | €2.40\n\n---\n\n## Tea\n\n- Green tea | €2.20' } });
-  await expect(screen.locator('[data-qr-body] .divider')).toHaveCount(1);
+  await expect(screen.locator('[data-qr-body] .divider:not([data-qr-leader])')).toHaveCount(1);
+});
+
+test('a single word too long for a quarter view shrinks, then is cut', async ({ trmnl }) => {
+  const content = { ...BASE, title: 'Supercalifragilisticexpialidocious', body: '' };
+  const screen = await trmnl.render({ device: 'v2', view: 'quadrant', fields: content });
+  await checkScreen(screen, { content, view: 'quadrant', payload: JANE });
+  await expect(screen.locator('[data-qr-fit]').first()).toContainText('Supercali');
 });
 
 test('passes trmnlp lint', async ({ trmnl }) => {

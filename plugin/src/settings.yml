@@ -133,7 +133,7 @@ custom_fields:
 - keyname: qr_text
   name: Payment Link or Text
   field_type: string
-  description: Encoded as-is. To fix the amount, put it in the link (most services support it, e.g. paypal.me/yourname/12.50).<br /><strong>Examples:</strong> a <a href='https://www.paypal.com/paypalme/'>PayPal.Me</a> link, a <a href='https://revolut.me'>Revolut.me</a> link or a bitcoin address (bitcoin:bc1q...?amount=0.001). Start web links with https://, as in the placeholder.
+  description: Encoded as-is. To fix the amount, put it in the link (most services support it, e.g. paypal.me/yourname/12.50).<br /><strong>Examples:</strong> a <a href='https://www.paypal.com/paypalme/'>PayPal.Me</a> link, a <a href='https://revolut.me'>Revolut.me</a> link or a bitcoin address (bitcoin:bc1q...?amount=0.001). Web links need the full address, as in the placeholder.
   placeholder: https://paypal.me/yourname
   optional: true
 - keyname: title

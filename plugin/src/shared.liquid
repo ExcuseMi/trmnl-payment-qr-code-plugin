@@ -236,8 +236,7 @@
 {%- comment -%}
   Plain qr_code. TRMNL's server draws its svg at its natural size with max-width:100%, so it can
   shrink but never grow: module size 40 makes that natural size larger than any box, and it shrinks
-  to fit. trmnlp's svg scales to the box anyway. p--2 is the quiet zone scanners need. In dark mode
-  TRMNL inverts the code with the screen: inverted QR codes are valid and scan on phones.
+  to fit. trmnlp's svg scales to the box anyway. p--2 is the quiet zone scanners need.
 {%- endcomment -%}
 <div class="shrink-0 aspect--1/1 w--max-full p--2 {{ qr_dims }}" data-qr-box>
   {%- if payload != blank -%}
@@ -333,47 +332,68 @@
   // fit the markdown into its box: step the text size down, then drop trailing blocks,
   // then clamp the last block to the lines that are left
   var SIZES = ['content--xlarge', 'content--large', 'content--base', 'content--small'];
-  // list marks: the framework resets list styles, so draw a bullet (or the number) in front of each item
+  // list marks: the framework resets list styles, so put a bullet (or the number) in front of each item
   function markLists(content) {
     content.querySelectorAll('li').forEach(function (li) {
       var ordered = li.parentElement && li.parentElement.tagName === 'OL';
       var mark = document.createElement('span');
       mark.setAttribute('data-qr-mark', '');
-      if (ordered) {
-        mark.textContent = (Array.prototype.indexOf.call(li.parentElement.children, li) + 1) + '.';
-        mark.style.cssText = 'flex:none;min-width:1.4em';
-      } else {
-        mark.style.cssText = 'flex:none;width:.4em;height:.4em;border-radius:50%;background:currentColor;margin-top:calc((1lh - .4em) / 2)';
-      }
-      if (color) mark.className = 'text--red';
+      mark.className = 'shrink-0' + (color ? ' text--red' : '');
+      mark.textContent = ordered ? (Array.prototype.indexOf.call(li.parentElement.children, li) + 1) + '.' : '•';
       var text = document.createElement('span');
-      text.style.cssText = 'flex:1 1 0;min-width:0';
+      text.className = 'grow w--min-0';
       while (li.firstChild) text.appendChild(li.firstChild);
       li.appendChild(mark);
       li.appendChild(text);
-      li.style.cssText = 'display:flex;align-items:flex-start;gap:.5em;list-style:none';
+      li.className = 'flex flex--row flex--top gap--small';
     });
-    content.querySelectorAll('ul, ol').forEach(function (list) { list.style.paddingLeft = '0'; });
+    content.querySelectorAll('ul, ol').forEach(function (list) { list.classList.add('pl--0'); });
   }
 
   // a title's longest word can be wider than its column (a long name next to the logo in a quarter
-  // view): shrink that title's font until its text fits its box
+  // view): step that title down through the framework's sizes until its text fits its box, and as a
+  // last resort cut the word with an ellipsis
+  var TITLE_SIZES = ['title--xxlarge', 'title--xlarge', 'title--large', 'title--base', 'title--small', 'description'];
   function fitTitles() {
-    view.querySelectorAll('[data-qr-layout] .title').forEach(function (t) {
-      t.style.fontSize = '';
-      var size = parseFloat(getComputedStyle(t).fontSize);
-      while (t.scrollWidth > t.clientWidth + 1 && size > 10) {
-        size -= 1;
-        t.style.fontSize = size + 'px';
+    view.querySelectorAll('[data-qr-layout] .title, [data-qr-fit]').forEach(function (t) {
+      t.setAttribute('data-qr-fit', '');
+      if (t._orig == null) t._orig = [t.className, t.textContent];
+      t.className = t._orig[0];
+      t.textContent = t._orig[1];
+      var spills = function () { return t.scrollWidth > t.clientWidth + 1; };
+      var i = TITLE_SIZES.findIndex(function (c) { return t.classList.contains(c); });
+      if (i < 0) i = TITLE_SIZES.indexOf('title--base');
+      while (spills() && i < TITLE_SIZES.length - 1) {
+        t.classList.remove(TITLE_SIZES[i]);
+        if (TITLE_SIZES[++i] === 'description') t.classList.remove('title');
+        t.classList.add(TITLE_SIZES[i]);
+      }
+      var text = t._orig[1].trim();
+      while (spills() && text.length > 1) {
+        text = text.slice(0, -1);
+        t.textContent = text.trimEnd() + '…';
       }
     });
+  }
+
+  // cut the last text of a block by whole words, with an ellipsis, until it fits
+  function cutWords(el, over) {
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    var nodes = [];
+    while (walker.nextNode()) if (walker.currentNode.nodeValue.trim()) nodes.push(walker.currentNode);
+    while (over() && nodes.length) {
+      var node = nodes[nodes.length - 1];
+      var words = node.nodeValue.replace(/…$/, '').trimEnd().split(/\s+/);
+      words.pop();
+      if (words.length) node.nodeValue = words.join(' ') + '…';
+      else { node.nodeValue = ''; nodes.pop(); }
+    }
   }
 
   function fit() {
     fitTitles();
     view.querySelectorAll('[data-qr-body]').forEach(function (box) {
       var content = box.firstElementChild;
-      box.style.overflow = 'hidden';
       // start from the original text each run, so a later run can undo an early, too-tight one
       if (box._orig == null) box._orig = [content.className, content.innerHTML];
       content.className = box._orig[0];
@@ -382,12 +402,13 @@
       // stretch the blocks holding price rows so the prices line up on the right edge
       content.querySelectorAll('[data-qr-row]').forEach(function (row) {
         var block = row.closest('ul, ol, p');
-        if (block) block.style.alignSelf = 'stretch';
-        // a dotted leader from the item to its price, sitting on the text baseline
+        if (block) block.classList.add('self--stretch');
+        // a dotted leader from the item to its price, on the text baseline
         var leader = document.createElement('span');
-        leader.style.cssText = 'flex:1 1 0;min-width:1em;align-self:stretch;margin-bottom:.3em;border-bottom:2px dotted currentColor';
+        leader.className = 'divider w--auto w--min-0 grow mb--1';
+        leader.setAttribute('data-qr-leader', '');
         row.insertBefore(leader, row.lastElementChild);
-        row.style.alignItems = 'flex-end';
+        row.classList.add('flex--bottom');
       });
       markLists(content);
       // a markdown --- becomes the framework's divider
@@ -410,27 +431,16 @@
         if ((tail.tagName === 'UL' || tail.tagName === 'OL') && tail.children.length > 1) { tail.removeChild(tail.lastElementChild); continue; }
         if (content.children.length < 2) break;
         // drop the last block only if the rest still overflows without it; otherwise keep it and
-        // let the clamp below cut it to the lines that fit (a long paragraph once vanished whole)
-        tail.style.display = 'none';
+        // cut it to the words that fit (a long paragraph once vanished whole)
+        tail.classList.add('hidden');
         var stillOver = over();
-        tail.style.display = '';
+        tail.classList.remove('hidden');
         if (!stillOver) break;
         content.removeChild(tail);
       }
       // a heading whose items were all cut is noise
       while (content.children.length > 1 && /^H[1-6]$/.test(content.lastElementChild.tagName)) content.removeChild(content.lastElementChild);
-      var last = content.lastElementChild;
-      if (over() && last) {
-        // rects are zoomed on high-density screens, line-height is not
-        var zoom = box.getBoundingClientRect().height / box.clientHeight || 1;
-        var lh = (parseFloat(getComputedStyle(last).lineHeight) || 20) * zoom;
-        var room = box.getBoundingClientRect().bottom - last.getBoundingClientRect().top;
-        var lines = Math.max(1, Math.floor(room / lh));
-        last.style.display = '-webkit-box';
-        last.style.webkitBoxOrient = 'vertical';
-        last.style.webkitLineClamp = String(lines);
-        last.style.overflow = 'hidden';
-      }
+      if (content.lastElementChild) cutWords(content.lastElementChild, over);
     });
   }
   // the framework settles its own layout on load, so fit again after it
