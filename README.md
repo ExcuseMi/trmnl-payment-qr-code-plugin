@@ -12,7 +12,7 @@ Show a scannable payment QR code with your own text on a TRMNL.
 - Markdown text that shrinks to fit, with bullets and price rows: `- Espresso | €2.40` puts the price on the right with a dotted leader
 - An icon or your own image next to the title, and your own title bar text
 - All four view sizes, OG, TRMNL X and `sm` devices; red accents on color panels (BWRY etc.)
-- In dark mode TRMNL inverts the code along with the screen; inverted QR codes are valid and scan on phones
+- In dark mode the code stays black on a white tile, so it scans like in light mode
 - Few settings: text size, QR size and error correction are chosen automatically
 
 | | |
@@ -57,7 +57,7 @@ gem install trmnlp-test     # once; needs Docker
 trmnlp-test [-g filter]     # the tests in test/trmnl/, report in test/trmnl-report/
 ```
 
-The tests use [trmnlp-test](https://github.com/ExcuseMi/trmnlp-test): about 110 renders on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. "Server variant" tests patch a copy of the template the way TRMNL differed from trmnlp: its server's `qr_code` svg (always `width`/`height` plus `max-width:100%`, so it never grows; trmnlp's has only a viewBox) and CR LF newlines in the web editor's preview. The flow is drawn in [test/testing.puml](test/testing.puml):
+The tests use [trmnlp-test](https://github.com/ExcuseMi/trmnlp-test): 114 renders on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. "Server variant" tests patch a copy of the template the way TRMNL differed from trmnlp: its server's `qr_code` svg (always `width`/`height` plus `max-width:100%`, so it never grows; trmnlp's has only a viewBox) and CR LF newlines in the web editor's preview. The flow is drawn in [test/testing.puml](test/testing.puml):
 
 ![How the plugin is tested](test/testing.png)
 
