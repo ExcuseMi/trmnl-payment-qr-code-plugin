@@ -144,7 +144,7 @@ custom_fields:
 - keyname: caption
   name: QR Caption
   field_type: string
-  description: Short line under the QR code. For SEPA it defaults to the amount, or Any amount.
+  description: Optional short line under the QR code, like the amount.
   placeholder: Scan to pay
   optional: true
 - keyname: body
@@ -213,5 +213,5 @@ custom_fields:
   optional: true
 name: Payment QR Code
 description: Payment QR code with your own text
-recipe_overview: 'Show a scannable payment QR code on your TRMNL, so people can pay you by pointing their phone at the screen. Choose a SEPA bank transfer (EPC QR, opened by most European banking apps with name, IBAN, amount and reference filled in) with a fixed amount or one the payer picks, for merchants a Bancontact code built from their Bancontact Pro payment profile, or encode any payment link such as PayPal.me, Revolut or a Bitcoin address. Add a title, a caption under the code and markdown text, including price lists where each price lines up on the right with a dotted leader. The layout adapts by itself to your text and screen, from full screen and portrait to half and quarter mashup slots, and adds a red accent on color screens and keeps the code readable in dark mode. Its own captions follow your account language: English, Dutch, French or German. Use it for a coffee corner, a shared household fund, a market stall, a club membership or a tip jar. Switch Data Source to Webhook to update prices, amount or reference from a simple web editor on any phone, so staff can change the screen without a TRMNL account.'
+recipe_overview: Show a scannable payment QR code on your TRMNL, so people can pay you by pointing their phone at the screen. Choose a SEPA bank transfer (EPC QR, opened by most European banking apps with name, IBAN, amount and reference filled in) with a fixed amount or one the payer picks, for merchants a Bancontact code built from their Bancontact Pro payment profile, or encode any payment link such as PayPal.me, Revolut or a Bitcoin address. Add a title, a caption under the code and markdown text, including price lists where each price lines up on the right with a dotted leader. The layout adapts by itself to your text and screen, from full screen and portrait to half and quarter mashup slots, and adds a red accent on color screens and keeps the code readable in dark mode. Use it for a coffee corner, a shared household fund, a market stall, a club membership or a tip jar. Switch Data Source to Webhook to update prices, amount or reference from a simple web editor on any phone, so staff can change the screen without a TRMNL account.
 refresh_interval: 15
