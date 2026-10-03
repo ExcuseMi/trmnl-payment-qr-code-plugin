@@ -14,18 +14,26 @@
 
 {%- comment -%}
   The plugin's own words, in the account's language (trmnl.user.locale). What people type themselves
-  (title, caption, text, footer) is shown as typed; there is no default caption.
+  (title, caption, text, footer) is shown as typed.
 {%- endcomment -%}
 {%- assign locale = trmnl.user.locale | default: "en" | downcase | slice: 0, 2 -%}
 {%- case locale -%}
 {%- when "nl" -%}
+  {%- assign t_any = "Vrij bedrag" -%}{%- assign t_pay_bc = "Betaal met Bancontact" -%}{%- assign t_pay_bc_amount = "Betaal AMOUNT met Bancontact" -%}
   {%- assign t_missing_settings = "Vul de betaalgegevens in bij de plugin-instellingen" -%}{%- assign t_missing_webhook = "Stuur de betaalgegevens naar de webhook" -%}
+  {%- assign money_delim = "." -%}{%- assign money_sep = "," -%}{%- assign money_before = "€ " -%}{%- assign money_after = "" -%}
 {%- when "fr" -%}
+  {%- assign t_any = "Montant libre" -%}{%- assign t_pay_bc = "Payez avec Bancontact" -%}{%- assign t_pay_bc_amount = "Payez AMOUNT avec Bancontact" -%}
   {%- assign t_missing_settings = "Complétez les données de paiement dans les paramètres du plugin" -%}{%- assign t_missing_webhook = "Envoyez les données de paiement au webhook" -%}
+  {%- assign money_delim = " " -%}{%- assign money_sep = "," -%}{%- assign money_before = "" -%}{%- assign money_after = " €" -%}
 {%- when "de" -%}
+  {%- assign t_any = "Beliebiger Betrag" -%}{%- assign t_pay_bc = "Mit Bancontact bezahlen" -%}{%- assign t_pay_bc_amount = "AMOUNT mit Bancontact bezahlen" -%}
   {%- assign t_missing_settings = "Zahlungsdaten in den Plugin-Einstellungen eintragen" -%}{%- assign t_missing_webhook = "Zahlungsdaten an den Webhook senden" -%}
+  {%- assign money_delim = "." -%}{%- assign money_sep = "," -%}{%- assign money_before = "" -%}{%- assign money_after = " €" -%}
 {%- else -%}
+  {%- assign t_any = "Any amount" -%}{%- assign t_pay_bc = "Pay with Bancontact" -%}{%- assign t_pay_bc_amount = "Pay AMOUNT with Bancontact" -%}
   {%- assign t_missing_settings = "Fill in the payment details in the plugin settings" -%}{%- assign t_missing_webhook = "Send the payment details to the webhook" -%}
+  {%- assign money_delim = "," -%}{%- assign money_sep = "." -%}{%- assign money_before = "€" -%}{%- assign money_after = "" -%}
 {%- endcase -%}
 
 {%- comment -%} amount: an empty, zero or invalid amount lets the payer choose {%- endcomment -%}
@@ -33,11 +41,13 @@
 {%- if src.payment_type == "text" or src.payment_type == "bancontact" -%}{%- assign payment_type = src.payment_type -%}{%- endif -%}
 {%- assign payload = "" -%}
 {%- assign amount = "" -%}
+{%- assign amount_display = "" -%}
 {%- assign amount_raw = src.epc_amount | default: "" | strip | replace: ",", "." -%}
 {%- if amount_raw != blank -%}
   {%- assign amount_num = amount_raw | times: 1.0 | round: 2 -%}
   {%- if amount_num > 0 -%}
     {%- assign amount = amount_num | number_to_currency: "", "", ".", 2 -%}
+    {%- assign amount_display = amount_num | number_to_currency: "", money_delim, money_sep, 2 | prepend: money_before | append: money_after -%}
   {%- endif -%}
 {%- endif -%}
 
@@ -74,7 +84,22 @@
   {%- assign payload = src.qr_text | default: "" | strip -%}
 {%- endif -%}
 
-{%- assign caption = src.caption | default: "" | strip -%}
+{%- comment -%}
+  The caption is off unless show_caption is on; then it is the typed text, or else the amount line
+  in the account language.
+{%- endcomment -%}
+{%- assign show_caption = false -%}
+{%- assign scap = src.show_caption | downcase -%}
+{%- if src.show_caption == true or scap == "true" or scap == "yes" or scap == "1" -%}{%- assign show_caption = true -%}{%- endif -%}
+{%- assign caption = "" -%}
+{%- if show_caption -%}{%- assign caption = src.caption | default: "" | strip -%}{%- endif -%}
+{%- if show_caption and caption == blank and payload != blank -%}
+  {%- if payment_type == "epc" -%}
+    {%- if amount_display != blank -%}{%- assign caption = amount_display -%}{%- else -%}{%- assign caption = t_any -%}{%- endif -%}
+  {%- elsif payment_type == "bancontact" -%}
+    {%- if amount_display != blank -%}{%- assign caption = t_pay_bc_amount | replace: "AMOUNT", amount_display -%}{%- else -%}{%- assign caption = t_pay_bc -%}{%- endif -%}
+  {%- endif -%}
+{%- endif -%}
 {%- assign title = src.title | default: "" | strip -%}
 {%- assign footer = src.footer | default: "" | strip -%}
 {%- assign icon = src.icon | default: "none" -%}

@@ -9,7 +9,7 @@ const coffeeShop = require('../../assets/examples/coffee-shop.json');
 
 const BASE = {
   data_source: 'settings', payment_type: 'epc', epc_name: 'Jane Doe', epc_iban: 'BE71 0961 2345 6769', epc_amount: '12.50',
-  epc_reference: 'Coffee fund', qr_text: '', title: 'Buy me a coffee', caption: '',
+  epc_reference: 'Coffee fund', qr_text: '', title: 'Buy me a coffee', show_caption: true, caption: '',
   body: '## Coffee fund\n\nEvery cup is **EUR 0.50**. Pay whenever you like.\n\n- Open your banking app\n- Scan the code',
   footer: 'Thank you!', icon: 'coffee', image_url: '',
 };
@@ -156,9 +156,8 @@ for (const s of matrix({ device: ['og_plus', 'v2'], view: ['full', 'quadrant'], 
   });
 }
 test('color panel: red accent on the caption', async ({ trmnl }) => {
-  const content = { ...BASE, caption: '€12.50' };
-  const screen = await trmnl.render({ device: 'og_bwry', fields: content });
-  await checkScreen(screen, { content, view: 'full', payload: JANE });
+  const screen = await trmnl.render({ device: 'og_bwry', fields: BASE });
+  await checkScreen(screen, { content: BASE, view: 'full', payload: JANE });
   await expect(screen.locator('[data-accent^="bg--"]')).toHaveClass(/bg--red/);
 });
 test('classic fonts', async ({ trmnl }) => {
@@ -166,24 +165,24 @@ test('classic fonts', async ({ trmnl }) => {
   await checkScreen(screen, { content: BASE, view: 'full', payload: JANE });
 });
 
-// ---------------------------------------------------------------- payload and caption rules (no caption unless typed)
+// ---------------------------------------------------------------- payload and caption rules
 const PAYLOADS = [
-  ['amount open', { epc_amount: '' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), null],
-  ['amount zero is open', { epc_amount: '0' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), null],
-  ['amount comma', { epc_amount: '7,5' }, epc('Jane Doe', 'BE71096123456769', '7.50', 'Coffee fund'), null],
-  ['amount not a number', { epc_amount: 'abc' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), null],
-  ['big amount', { epc_amount: '1234.5' }, epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), null],
-  ['iban cleanup', { epc_iban: 'be71 0961 2345 6769 ' }, JANE, null],
-  ['name limit', { epc_name: 'N'.repeat(90) }, epc('N'.repeat(70), 'BE71096123456769', '12.50', 'Coffee fund'), null],
-  ['reference limit', { epc_reference: 'R'.repeat(200) }, epc('Jane Doe', 'BE71096123456769', '12.50', 'R'.repeat(140)), null],
+  ['amount open', { epc_amount: '' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), 'Any amount'],
+  ['amount zero is open', { epc_amount: '0' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), 'Any amount'],
+  ['amount comma', { epc_amount: '7,5' }, epc('Jane Doe', 'BE71096123456769', '7.50', 'Coffee fund'), '€7.50'],
+  ['amount not a number', { epc_amount: 'abc' }, epc('Jane Doe', 'BE71096123456769', '', 'Coffee fund'), 'Any amount'],
+  ['big amount', { epc_amount: '1234.5' }, epc('Jane Doe', 'BE71096123456769', '1234.50', 'Coffee fund'), '€1,234.50'],
+  ['iban cleanup', { epc_iban: 'be71 0961 2345 6769 ' }, JANE, '€12.50'],
+  ['name limit', { epc_name: 'N'.repeat(90) }, epc('N'.repeat(70), 'BE71096123456769', '12.50', 'Coffee fund'), '€12.50'],
+  ['reference limit', { epc_reference: 'R'.repeat(200) }, epc('Jane Doe', 'BE71096123456769', '12.50', 'R'.repeat(140)), '€12.50'],
   ['own caption', { caption: 'Scan to pay' }, JANE, 'Scan to pay'],
   ['link', { payment_type: 'text', qr_text: ' https://paypal.me/jane/5 ' }, 'https://paypal.me/jane/5', null],
   ['bancontact fixed amount', { payment_type: 'bancontact', bc_profile_id: '5bb37284e35e2b29e363df22', epc_amount: '2.40', epc_reference: 'Espresso', title: 'Northbean Coffee' },
-    'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22?D=Northbean%20Coffee&A=240&R=Espresso', null],
+    'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22?D=Northbean%20Coffee&A=240&R=Espresso', 'Pay €2.40 with Bancontact'],
   ['bancontact open amount', { payment_type: 'bancontact', bc_profile_id: '5bb37284e35e2b29e363df22', epc_amount: '', epc_reference: '', title: '' },
-    'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22', null],
+    'https://pay.bancontact.net/t/1/5bb37284e35e2b29e363df22', 'Pay with Bancontact'],
   ['bancontact encodes and caps D and R', { payment_type: 'bancontact', bc_profile_id: 'abc123', epc_amount: '0', epc_reference: 'Invoice #12 & co', title: 'Café Brussel: the coffee corner on the first floor' },
-    'https://pay.bancontact.net/t/1/abc123?D=Caf%C3%A9%20Brussel%3A%20the%20coffee%20corner%20on&R=Invoice%20%2312%20%26%20co', null],
+    'https://pay.bancontact.net/t/1/abc123?D=Caf%C3%A9%20Brussel%3A%20the%20coffee%20corner%20on&R=Invoice%20%2312%20%26%20co', 'Pay with Bancontact'],
 ];
 for (const [name, fields, payload, caption] of PAYLOADS) {
   test(`payload · ${name}`, async ({ trmnl }) => {
@@ -204,10 +203,15 @@ for (const [name, fields] of [['no IBAN', { epc_iban: '' }], ['no name', { epc_n
 }
 
 // ---------------------------------------------------------------- the account language
-for (const [locale, text] of [['fr', 'Complétez les données de paiement dans les paramètres du plugin'], ['de-DE', 'Zahlungsdaten in den Plugin-Einstellungen eintragen']]) {
+const LOCALES = [
+  ['nl', { epc_amount: '1234.5' }, '€ 1.234,50'],
+  ['fr', { epc_amount: '' }, 'Montant libre'],
+  ['de-DE', { payment_type: 'bancontact', bc_profile_id: 'abc123', epc_amount: '3', epc_reference: '', title: '' }, '3,00 € mit Bancontact bezahlen'],
+];
+for (const [locale, fields, caption] of LOCALES) {
   test(`language · ${locale}`, async ({ trmnl }) => {
-    const screen = await trmnl.render({ locale, fields: { ...BASE, epc_iban: '' } });
-    await expect(screen).toShowText(text);
+    const screen = await trmnl.render({ locale, fields: { ...BASE, ...fields } });
+    await expect(screen.locator('[data-accent^="bg--"]')).toHaveText(caption);
   });
 }
 test('language · Dutch message when nothing is set', async ({ trmnl }) => {
@@ -261,6 +265,21 @@ for (const flag of [false, 'false', 'no']) {
     await expect(screen).toHaveQr(JANE);
   });
 }
+
+// the caption is off unless show_caption is on; a typed caption alone does not show
+for (const [name, fields] of [['off by default', { show_caption: undefined }], ['off with text typed', { show_caption: false, caption: 'Scan me' }], ['off as a string', { show_caption: 'false', caption: 'Scan me' }]]) {
+  test(`caption ${name}`, async ({ trmnl }) => {
+    const content = { ...BASE, ...fields };
+    const screen = await trmnl.render({ fields: content });
+    await checkScreen(screen, { content, view: 'full', payload: JANE });
+    await expect(screen.locator('[data-accent^="bg--"]')).toHaveCount(0);
+  });
+}
+test('caption on through the webhook, as a string', async ({ trmnl }) => {
+  const { show_caption, ...rest } = BASE;
+  const screen = await trmnl.render({ fields: WEBHOOK, webhook: { merge_variables: { payment: { ...rest, show_caption: 'true' } } } });
+  await expect(screen.locator('[data-accent^="bg--"]')).toHaveText('€12.50');
+});
 
 // ---------------------------------------------------------------- what TRMNL's server does differently
 // trmnlp-test runs trmnlp's code; these patch a copy of the plugin to behave the way TRMNL did.

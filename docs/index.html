@@ -170,7 +170,11 @@
         <div class="card-body">
           <div class="row">
             <div><label for="title">Title</label><input id="title"></div>
-            <div><label for="caption">QR caption</label><input id="caption" placeholder="Optional, like the amount"></div>
+            <div><label for="show_caption">QR caption</label>
+              <select id="show_caption"><option value="">Off</option><option value="true">On</option></select></div>
+          </div>
+          <div class="row" id="captionRow">
+            <div><label for="caption">Caption text</label><input id="caption" placeholder="Empty shows the amount"></div>
           </div>
           <div class="md-head">
             <label for="body">Text <small>markdown</small></label>
@@ -240,9 +244,15 @@
           <button type="button" data-view="3" aria-pressed="false">Half tall</button>
           <button type="button" data-view="4" aria-pressed="false">Quarter</button>
         </div>
+        <div class="seg" role="group" aria-label="Language" id="langSeg">
+          <button type="button" data-lang="en" aria-pressed="true">EN</button>
+          <button type="button" data-lang="nl" aria-pressed="false">NL</button>
+          <button type="button" data-lang="fr" aria-pressed="false">FR</button>
+          <button type="button" data-lang="de" aria-pressed="false">DE</button>
+        </div>
       </div>
       <div class="stage"><div class="bezel"><div class="screen-box" id="screenBox"></div></div></div>
-      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet: this is what the device shows after you send.</div>
+      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet: this is what the device shows after you send. The amount caption follows your TRMNL account language (EN/NL/FR/DE above).</div>
     </section>
     <section class="card">
       <div class="card-head"><h2>JSON to send</h2><button type="button" id="copyJson" style="margin-left:auto;padding:5px 10px;font-size:13px">Copy</button></div>
@@ -264,7 +274,7 @@ const BAKED_WEBHOOK = null;
 
 const KEY = 'payment-qr-webhook';
 const FIELDS = ['payment_type', 'epc_name', 'epc_iban', 'bc_profile_id', 'epc_reference', 'amount_mode', 'epc_amount',
-  'qr_text', 'title', 'caption', 'body', 'footer', 'title_bar', 'title_bar_icon', 'show_title_bar', 'icon', 'image_url'];
+  'qr_text', 'title', 'show_caption', 'caption', 'body', 'footer', 'title_bar', 'title_bar_icon', 'show_title_bar', 'icon', 'image_url'];
 const MAX_BYTES = 2000;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const $ = (id) => document.getElementById(id);
@@ -321,6 +331,7 @@ function readForm() {
   drop.forEach((k) => delete p[k]);
   if (p.icon === 'none') delete p.icon;
   if (p.show_title_bar === 'false') p.show_title_bar = false;
+  if (p.show_caption === 'true') p.show_caption = true; else { delete p.show_caption; delete p.caption; }
   if (p.epc_amount && Number(p.epc_amount.replace(',', '.')) > 0) p.epc_amount = Number(p.epc_amount.replace(',', '.')).toFixed(2);
   // the template treats an amount of 0 as "payer chooses"
   if (p.amount_mode === 'open') p.epc_amount = '0';
@@ -366,6 +377,7 @@ function refresh() {
   $('amountFields').classList.toggle('hidden', type === 'text');
   $('textFields').classList.toggle('hidden', type !== 'text');
   $('amountWrap').classList.toggle('hidden', $('amount_mode').value === 'open');
+  $('captionRow').classList.toggle('hidden', $('show_caption').value !== 'true');
 
   const iban = $('epc_iban').value.replace(/\s+/g, '').toUpperCase();
   $('ibanHint').textContent = iban && !ibanValid(iban) ? 'This IBAN does not check out. Look for a typo.' : '';
@@ -413,6 +425,9 @@ const VIEWS = { 1: ['full', 1, 1], 2: ['half_horizontal', 1, 0.5], 3: ['half_ver
 // in webhook mode the device shows only the webhook data, so the preview needs no settings
 const SAMPLE = { data_source: 'webhook' };
 let engine = null, template = null, device = 'og', view = 1, frame = null, renderTimer = null, renderSeq = 0;
+// preview language: the browser's, if the plugin has it, until one is picked
+let lang = ['nl', 'fr', 'de'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'en';
+document.querySelectorAll('#langSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
 
 function utf8(s) { return unescape(encodeURIComponent(s)); }
 
@@ -480,8 +495,8 @@ async function renderNow() {
   if (!target) return;
   const seq = ++renderSeq;
   const p = readForm();
-  // the device uses the TRMNL account's language; the browser's is the closest guess here
-  const trmnl = { user: { locale: (navigator.language || 'en').slice(0, 2) }, plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } };
+  // the device uses the TRMNL account's language; the preview uses the one picked above
+  const trmnl = { user: { locale: lang }, plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } };
   const ctx = { trmnl, payment: p, view: view };
   try {
     const html = await engine.parseAndRender(template, ctx);
@@ -499,6 +514,7 @@ async function renderNow() {
 }
 
 segment($('deviceSeg'), (b) => { device = b.dataset.device; buildFrame(); });
+segment($('langSeg'), (b) => { lang = b.dataset.lang; scheduleRender(); });
 segment($('viewSeg'), (b) => { view = Number(b.dataset.view); buildFrame(); });
 
 $('copyJson').addEventListener('click', async () => {

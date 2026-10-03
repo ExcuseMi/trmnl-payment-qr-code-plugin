@@ -7,6 +7,7 @@
       "epc_amount": "0",
       "epc_reference": "Northbean Coffee",
       "title": "Northbean Coffee",
+      "show_caption": true,
       "caption": "Scan, pay, enjoy",
       "body": "## Coffee\n- Espresso | €2.40\n- Cappuccino | €3.20\n- Flat white | €3.60\n- Caffe latte | €3.60\n- Chai latte | €3.80\n\n## Something sweet\n- Butter croissant | €2.50\n- Cinnamon bun | €3.20\n\n*Oat milk +€0.40*",
       "footer": "Thank you!",

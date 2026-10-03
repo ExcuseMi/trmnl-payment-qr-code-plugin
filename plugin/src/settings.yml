@@ -60,6 +60,7 @@ custom_fields:
     - bc_profile_id
     - qr_text
     - title
+    - show_caption
     - caption
     - body
     - footer
@@ -141,10 +142,16 @@ custom_fields:
   description: Large text next to or above the QR code.
   placeholder: Buy me a coffee
   optional: true
+- keyname: show_caption
+  name: Show QR Caption
+  field_type: boolean
+  description: A short line under the QR code. On its own it shows the amount (or that any amount is fine) in your account language; type a caption below to replace it.
+  default: false
+  optional: true
 - keyname: caption
   name: QR Caption
   field_type: string
-  description: Optional short line under the QR code, like the amount.
+  description: Replaces the amount line when Show QR Caption is on.
   placeholder: Scan to pay
   optional: true
 - keyname: body
