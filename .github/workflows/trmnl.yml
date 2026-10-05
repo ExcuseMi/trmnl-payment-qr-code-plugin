@@ -1,0 +1,29 @@
+name: TRMNL
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+      - run: gem install trmnl_preview
+      - run: trmnlp lint
+        working-directory: plugin
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # trmnlp test --report in the trmnl/trmnlp image, plus zbar to scan the code
+      - run: ./test.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trmnlp-report
+          path: report

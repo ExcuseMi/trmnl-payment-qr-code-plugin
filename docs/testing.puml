@@ -1,25 +1,26 @@
 @startuml testing
-title How the plugin is tested with trmnlp-test
+title How the plugin is tested with trmnlp test
 
 skinparam shadowing false
 skinparam sequenceMessageAlign left
 skinparam responseMessageBelowArrow true
 
 actor Developer as dev
-participant "trmnlp-test\n(gem, Docker image)" as cli
-participant "test/trmnl/plugin.spec.js\n(Playwright workers)" as spec
-participant "harness\n(trmnlp's own Liquid, settings\nand webhook handling)" as harness
+participant "test.sh\n(trmnl/trmnlp image + zbar)" as cli
+participant "plugin/tests/payment_qr_spec.rb\n(RSpec, trmnlp test)" as spec
+participant "trmnlp\n(its own Liquid, settings\nand stored webhook data)" as harness
 participant "shared.liquid\n(data + layout)" as liquid
-participant "Chromium page\n(device classes, palette,\ncached framework + fonts)" as page
+participant "Firefox page\n(device classes, palette,\nframework + fonts)" as page
 participant "zbar" as zbar
 
-dev -> cli : trmnlp-test [-g filter]
-cli -> spec : run 114 tests in parallel
+dev -> cli : ./test.sh [-e filter]
+cli -> cli : trmnlp lint
+cli -> spec : trmnlp test --report: 146 tests
 loop every test
-  opt server variant
-    spec -> spec : copy plugin/, patch shared.liquid the way\nTRMNL's server differs (fixed-size or sized svg,\nCRLF line endings, broken image)
+  opt CR LF test
+    spec -> spec : copy plugin/, give shared.liquid CR LF\nline endings as TRMNL's web editor preview did
   end
-  spec -> harness : render({ device, view, orientation, darkMode,\nlocale, fonts, fields, webhook })
+  spec -> harness : render(device:, view:, orientation:, dark_mode:,\nvariables:, custom_fields:, data:)
   harness -> liquid : render with the settings and the webhook "payment"
   liquid --> harness : markup
   harness -> page : open at the device's size
@@ -32,16 +33,16 @@ loop every test
     price rows right-aligned and full width, list marks,
     dividers, captions per language, title bar
   end note
-  spec -> zbar : screenshot reduced to the device palette
+  spec -> zbar : picture reduced to the device's bit depth
   zbar --> spec : exact QR payload (also in dark mode)
 end
-cli --> dev : "114 passed" + gallery report (test/trmnl-report)
+cli --> dev : "146 examples, 0 failures" + report (report/index.html)
 
 == Ship ==
-dev -> dev : trmnlp lint, trmnlp push, then trmnlp pull
+dev -> dev : trmnlp push, then trmnlp pull
 note right of dev
   the device is the last check: when the server shows
   something trmnlp does not, that difference becomes a
-  new "server variant" test
+  new test on a patched copy of the template
 end note
 @enduml

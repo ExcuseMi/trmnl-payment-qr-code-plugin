@@ -150,7 +150,8 @@
 
 {%- comment -%}
   ---------- layout, chosen from the content and the view ----------
-  beside:   QR with the text next to it; a full portrait screen stacks it (portrait: classes below)
+  beside:   QR with the text next to it; a full portrait screen and its tall, narrow quarter stack it
+            (portrait: classes below). Its half views keep their shape: wide stays beside, tall is stacked
   stacked:  title, QR, text, footer in one column, for the tall half view
   centered: title, QR, caption, footer in one column, when there is no text
   Short views (half wide, quarter) put title and footer beside the QR when there are any.
@@ -207,6 +208,16 @@
   {%- if show_body -%}{%- assign qr_hp = qr_hp | minus: 30 -%}{%- endif -%}
   {%- if footer != blank -%}{%- assign qr_hp = qr_hp | minus: 6 -%}{%- endif -%}
   {%- assign qr_dims = qr_dims | append: " portrait:h--[" | append: qr_hp | append: "cqh] portrait:w--[" | append: qr_hp | append: "cqh]" -%}
+{%- endif -%}
+{%- comment -%} a portrait quarter is about 0.6 wide for its height: the code takes the width, title and footer go below {%- endcomment -%}
+{%- if view == 4 and mode == "beside" -%}
+  {%- assign qr_dims = qr_dims | append: " portrait:h--[56cqh]" -%}
+{%- endif -%}
+{%- assign portrait_layout = "" -%}{%- assign portrait_qr = "" -%}{%- assign portrait_divider = "" -%}
+{%- if view == 1 or view == 4 -%}
+  {%- assign portrait_layout = " portrait:layout--col portrait:layout--stretch-x" -%}
+  {%- assign portrait_qr = " portrait:w--full" -%}
+  {%- assign portrait_divider = " portrait:hidden" -%}
 {%- endif -%}
 {%- comment -%} Framework 3 dark mode remaps colours but not the code's own black on white, so the padding
   (its quiet zone) stays white: bg--black is white in dark mode. {%- endcomment -%}
@@ -286,13 +297,13 @@
 
 {%- comment -%} ---------- layouts ---------- {%- endcomment -%}
 {%- if mode == "beside" -%}
-<div class="layout layout--row layout--stretch-y gap--large portrait:layout--col portrait:layout--stretch-x" data-qr-layout="beside">
-  <div class="flex flex--col flex--center-x gap--small shrink-0 w--[{{ qr_h }}cqh] portrait:w--full">
+<div class="layout layout--row layout--stretch-y gap--large{{ portrait_layout }}" data-qr-layout="beside">
+  <div class="flex flex--col flex--center-x gap--small shrink-0 w--[{{ qr_h }}cqh]{{ portrait_qr }}">
     {{ qr_box }}
     {%- if caption != blank and caption_under_qr -%}<span class="title {{ caption_size }} text--center" data-clamp="2" data-accent="{{ accent_pill }}">{{ caption }}</span>{%- endif -%}
   </div>
   {%- comment -%} dividers: between QR and text (not when stacked on portrait), under the title, above the footer {%- endcomment -%}
-  <div class="divider--v portrait:hidden" data-qr-divider></div>
+  <div class="divider--v{{ portrait_divider }}" data-qr-divider></div>
   {%- comment -%} centered vertically, like the code beside it {%- endcomment -%}
   <div class="flex flex--col flex--stretch-x flex--center-y gap--small stretch">
     {{ heading }}
