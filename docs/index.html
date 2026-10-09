@@ -244,7 +244,7 @@
           <button type="button" data-view="3" aria-pressed="false">Half tall</button>
           <button type="button" data-view="4" aria-pressed="false">Quarter</button>
         </div>
-        <div class="seg" role="group" aria-label="Language" id="langSeg">
+        <div class="seg hidden" role="group" aria-label="Language" id="langSeg">
           <button type="button" data-lang="en" aria-pressed="true">EN</button>
           <button type="button" data-lang="nl" aria-pressed="false">NL</button>
           <button type="button" data-lang="fr" aria-pressed="false">FR</button>
@@ -252,7 +252,7 @@
         </div>
       </div>
       <div class="stage"><div class="bezel"><div class="screen-box" id="screenBox"></div></div></div>
-      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet: this is what the device shows after you send. The amount caption follows your TRMNL account language (EN/NL/FR/DE above).</div>
+      <div class="render-note">Rendered with the plugin's own template and TRMNL's stylesheet: this is what the device shows after you send. <span id="langNote"></span></div>
     </section>
     <section class="card">
       <div class="card-head"><h2>JSON to send</h2><button type="button" id="copyJson" style="margin-left:auto;padding:5px 10px;font-size:13px">Copy</button></div>
@@ -425,6 +425,7 @@ const VIEWS = { 1: ['full', 1, 1], 2: ['half_horizontal', 1, 0.5], 3: ['half_ver
 // in webhook mode the device shows only the webhook data, so the preview needs no settings
 const SAMPLE = { data_source: 'webhook' };
 let engine = null, template = null, device = 'og', view = 1, frame = null, renderTimer = null, renderSeq = 0;
+const LANGS = ['en', 'nl', 'fr', 'de'];
 // preview language: the browser's, if the plugin has it, until one is picked
 let lang = ['nl', 'fr', 'de'].includes((navigator.language || '').slice(0, 2)) ? navigator.language.slice(0, 2) : 'en';
 document.querySelectorAll('#langSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
@@ -496,11 +497,19 @@ async function renderNow() {
   const seq = ++renderSeq;
   const p = readForm();
   // the device uses the TRMNL account's language; the preview uses the one picked above
-  const trmnl = { user: { locale: lang }, plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } };
-  const ctx = { trmnl, payment: p, view: view };
+  const render = (locale) => engine.parseAndRender(template, { payment: p, view: view,
+    trmnl: { user: { locale }, plugin_settings: { instance_name: 'Payment QR Code', custom_fields_values: SAMPLE } } });
   try {
-    const html = await engine.parseAndRender(template, ctx);
+    const html = await render(lang);
+    // only the plugin's own words are translated (the amount line, the "nothing sent yet" message);
+    // with none of those on screen the switch did nothing, so it is only shown when it changes the picture
+    const others = await Promise.all(LANGS.filter((l) => l !== lang).map(render));
     if (seq !== renderSeq) return;
+    const translated = others.some((h) => h !== html);
+    $('langSeg').classList.toggle('hidden', !translated);
+    $('langNote').textContent = translated
+      ? "The plugin's own words on this screen follow your TRMNL account language: preview it with EN/NL/FR/DE above."
+      : 'Nothing on this screen is translated: what you type shows as typed. Turn the QR caption on and leave its text empty for an amount line in your TRMNL account language.';
     target.innerHTML = html;
     // innerHTML does not run scripts; recreate them so the template's fit and color code runs
     target.querySelectorAll('script').forEach((old) => {

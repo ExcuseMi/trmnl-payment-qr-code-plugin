@@ -59,9 +59,10 @@ Everything happens in `plugin/src/shared.liquid`, which TRMNL runs on every rend
 ```sh
 cd plugin && trmnlp serve   # preview
 ./test.sh [-e filter]       # trmnlp lint + trmnlp test; needs Docker; report in report/index.html
+./deploy.sh [--check]       # trmnlp push, then compares TRMNL's copy with this repository
 ```
 
-The tests in `plugin/tests/` run on trmnlp's own [`trmnlp test`](https://github.com/usetrmnl/trmnlp#testing-plugins) (RSpec, Firefox), in the `trmnl/trmnlp` image with zbar added to scan the code: 146 tests on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view, including trmnlp's own `a publishable recipe` checks. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. One test renders a copy of the template with CR LF newlines, as TRMNL's web editor preview did. The flow is drawn in [docs/testing.puml](docs/testing.puml):
+The tests in `plugin/tests/` run on trmnlp's own [`trmnlp test`](https://github.com/usetrmnl/trmnlp#testing-plugins) (RSpec, Firefox), in the `trmnl/trmnlp` image with zbar added to scan the code: 178 tests on OG, TRMNL X, a small Kindle, portrait, dark mode, a color panel and both font sets, in every view, including trmnlp's own `a publishable recipe` checks. Each render must pick the expected layout, scan to exactly the expected payload, keep a quiet zone and QR modules of at least 2 px, and keep text inside the view and off the code. One test renders a copy of the template with CR LF newlines, as TRMNL's web editor preview did. The flow is drawn in [docs/testing.puml](docs/testing.puml):
 
 ![How the plugin is tested](docs/testing.png)
 

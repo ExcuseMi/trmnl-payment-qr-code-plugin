@@ -71,6 +71,18 @@ module PaymentQr
         .map((t) => t.textContent.trim().slice(0, 30));
     })()
   JS
+  # text and pictures that reach under the title bar. The bar sits inside the view, so CUT_OFF does not
+  # see this: on a portrait TRMNL X quarter the title under the code was half hidden by the bar
+  UNDER_THE_BAR = <<~JS
+    (() => {
+      const bar = document.querySelector('.view .title_bar');
+      if (!bar) return [];
+      const top = bar.getBoundingClientRect().top;
+      return Array.from(document.querySelectorAll('[data-qr-layout] .title, [data-qr-layout] .label, [data-qr-layout] img, [data-qr-layout] svg, [data-qr-fit], [data-qr-body], [data-qr-box]'))
+        .filter((t) => { const r = t.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.bottom > top + 1; })
+        .map((t) => (t.textContent.trim().slice(0, 30) || t.tagName.toLowerCase()) + ' ' + Math.round(t.getBoundingClientRect().bottom - top) + 'px');
+    })()
+  JS
   # module size in px, the share of its box's padded area the code fills, and the quiet zone the box
   # padding leaves (module size 40 in the template: viewBox width / 40 = modules)
   GEOMETRY = <<~JS
@@ -126,6 +138,8 @@ module PaymentQr
       spilling = screen.evaluate(SPILLING)
       expect(spilling).to be_empty, "text spilling out of its box or the layout: #{spilling.join(', ')}"
       expect(screen).to have_css("[data-qr-layout='#{expected_layout(content, view)}']")
+      under = screen.evaluate(UNDER_THE_BAR)
+      expect(under).to be_empty, "under the title bar: #{under.join(', ')}"
       expect(scan(screen)).to eq(payload)
       check_text_share(screen, content, view)
       return if payload.nil?
@@ -204,6 +218,16 @@ RSpec.describe 'Payment QR Code' do
         next unless %w[full quadrant].include?(view)
 
         expect(screen.box('[data-qr-layout] .title').top).to be >= screen.box('[data-qr-box]').bottom - 1
+      end
+    end
+  end
+
+  # the example from the README on portrait screens: logo, title, caption and footer next to the code
+  describe 'the coffee shop on portrait screens' do
+    %w[og_plus v2].product(PaymentQr::VIEWS).each do |device, view|
+      it "#{device} · #{view}" do
+        screen = trmnl.render(device:, view:, orientation: :portrait, custom_fields: webhook, data: coffee_shop)
+        check_screen(screen, content: coffee_shop[:payment], view:, payload: northbean)
       end
     end
   end
@@ -424,6 +448,53 @@ RSpec.describe 'Payment QR Code' do
     expect(screen).to have_css('[data-qr-layout] .divider, [data-qr-layout] .divider--v', count: 3)
     screen = trmnl.render(custom_fields: base.merge(body: "## Coffee\n\n- Espresso | €2.40\n\n---\n\n## Tea\n\n- Green tea | €2.20"))
     expect(screen).to have_css('[data-qr-body] .divider:not([data-qr-leader])', count: 1, visible: :all)
+  end
+
+  # "Northbean Coffee · Grote Markt" is wider than a portrait quarter of the small screen: it ran out of
+  # the view and was cut mid-letter
+  it 'a title bar text too long for its slot is cut with an ellipsis' do
+    screen = trmnl.render(device: 'og_plus', view: 'quadrant', orientation: :portrait, custom_fields: webhook, data: coffee_shop)
+    expect_clean(screen)
+    expect(screen.first('.title_bar .title').text).to match(/\ANorthbean Coffee.*…\z/)
+    wide = trmnl.render(device: 'v2', custom_fields: webhook, data: coffee_shop)
+    expect(wide.first('.title_bar .title').text).to eq('Northbean Coffee · Grote Markt')
+  end
+
+  # The web editor (docs/index.html). Its language switch changed nothing on screen unless the plugin's
+  # own words were shown (the amount line, the "nothing sent yet" message), so it is hidden otherwise
+  it 'web editor: the language switch is shown only when it changes the preview' do
+    driver = TRMNLP::FirefoxDriver.build
+    begin
+      driver.get("file://#{File.expand_path('../../docs/index.html', __dir__)}")
+      wait = Selenium::WebDriver::Wait.new(timeout: 30)
+      set = lambda do |id, value|
+        driver.execute_script(<<~JS, id, value)
+          const e = document.getElementById(arguments[0]);
+          e.value = arguments[1];
+          e.dispatchEvent(new Event('input', { bubbles: true }));
+          e.dispatchEvent(new Event('change', { bubbles: true }));
+        JS
+      end
+      shown = -> { driver.execute_script("return !document.getElementById('langSeg').classList.contains('hidden')") }
+      preview = lambda do
+        driver.execute_script("const f = document.querySelector('#screenBox iframe'); return f && f.contentDocument && f.contentDocument.body ? f.contentDocument.body.innerText : ''")
+      end
+
+      { 'epc_name' => 'Jane Doe', 'epc_iban' => 'BE71096123456769', 'title' => 'Coffee fund' }.each { |id, value| set.call(id, value) }
+      wait.until { preview.call.include?('Coffee fund') }
+      wait.until { !shown.call }
+      expect(driver.find_element(id: 'langNote').text).to include('Nothing on this screen is translated')
+
+      set.call('show_caption', 'true')
+      wait.until { shown.call }
+      driver.find_element(css: '#langSeg button[data-lang="nl"]').click
+      wait.until { preview.call.include?('Vrij bedrag') }
+
+      set.call('caption', 'Scan to pay')
+      wait.until { preview.call.include?('Scan to pay') && !shown.call }
+    ensure
+      driver.quit
+    end
   end
 
   it 'a single word too long for a quarter view shrinks, then is cut' do

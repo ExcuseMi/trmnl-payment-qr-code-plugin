@@ -395,6 +395,22 @@
     });
   }
 
+  // the title bar's text neither wraps nor shrinks: in a narrow slot (a portrait quarter) it ran out
+  // of the view and was cut mid-letter, so cut it here with an ellipsis
+  function fitBar() {
+    view.querySelectorAll('.title_bar .title').forEach(function (t) {
+      if (t._orig == null) t._orig = t.textContent;
+      t.textContent = t._orig;
+      var bar = t.parentElement;
+      var room = bar.clientWidth - parseFloat(getComputedStyle(bar).paddingRight);
+      var text = t._orig.trim();
+      while (t.offsetLeft + t.offsetWidth > room + 1 && text.length > 1) {
+        text = text.slice(0, -1);
+        t.textContent = text.trimEnd() + '…';
+      }
+    });
+  }
+
   // cut the last text of a block by whole words, with an ellipsis, until it fits
   function cutWords(el, over) {
     var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -411,6 +427,7 @@
 
   function fit() {
     fitTitles();
+    fitBar();
     view.querySelectorAll('[data-qr-body]').forEach(function (box) {
       var content = box.firstElementChild;
       // start from the original text each run, so a later run can undo an early, too-tight one
